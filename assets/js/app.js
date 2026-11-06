@@ -129,7 +129,7 @@ function renderBookList(testament) {
   $("#navTitle").textContent = testament === "AT" ? "Antiguo Testamento" : "Nuevo Testamento";
   const grid = el("div", "book-grid");
   BOOKS.filter((b) => b.testament === testament).forEach((b) => {
-    const btn = el("button", b.hasHebrew ? "heb" : null, b.name);
+    const btn = el("button", b.hasHebrew ? "heb" : (b.hasGreek ? "grk" : null), b.name);
     btn.onclick = () => renderChapterList(b);
     grid.appendChild(btn);
   });
@@ -324,8 +324,8 @@ function openVerse(b, c, v, text) {
   paintFav();
   acts.appendChild(fav);
   acts.appendChild(actionBtn("📋", "Copiar", "", () => copyVerse(`${b.name} ${c}:${v}`, text)));
-  if (b.hasHebrew)
-    acts.appendChild(actionBtn("עב", "Estudiar palabra por palabra", "action--wide", () => { $("#verse").hidden = true; openStudy(b, c, v, text); }));
+  if (b.hasHebrew || b.hasGreek)
+    acts.appendChild(actionBtn(b.hasHebrew ? "עב" : "Ω", "Estudiar palabra por palabra", "action--wide", () => { $("#verse").hidden = true; openStudy(b, c, v, text); }));
 
   $("#verse").hidden = false;
 }
@@ -379,25 +379,35 @@ async function openStudy(b, c, v, esText) {
   const body = $("#panelBody"); body.replaceChildren(loadingEl());
   $("#panel").hidden = false;
   try {
-    const [heb, dict, esMap, vers] = await Promise.all([
-      Data.hebrew(b.id), Data.strongsHe(), Data.strongsHeEs().catch(() => ({})), Data.versions(),
+    const lang = b.hasHebrew ? "he" : "gr";          // AT = hebreo, NT = griego
+    const origId = lang === "he" ? "he_wlc" : "gr_sblgnt";
+    const origLangName = lang === "he" ? "Hebreo" : "Griego";
+    const [orig, dict, esMap, vers] = await Promise.all([
+      lang === "he" ? Data.hebrew(b.id) : Data.greek(b.id),
+      lang === "he" ? Data.strongsHe() : Data.strongsGr(),
+      (lang === "he" ? Data.strongsHeEs() : Data.strongsGrEs()).catch(() => ({})),
+      Data.versions(),
     ]);
     const core = [
       { id: "es_rvr", name: "Reina Valera 1909", lang: "Español" },
-      { id: "he_wlc", name: "Hebreo (original)", lang: "Hebreo", rtl: true },
+      { id: origId, name: origLangName + " (original)", lang: origLangName, rtl: lang === "he", orig: lang },
       { id: "en_kjv", name: "King James", lang: "Inglés" },
     ];
     const rest = vers.filter((x) => x.id !== "es_rvr" && x.id !== "en_kjv")
       .map((x) => ({ id: x.id, name: x.name, lang: LANG_ES[x.lang] || x.lang, file: x.file }));
     const options = [...core, ...rest];
-    let picks = Store.get("compare").filter((id) => options.some((o) => o.id === id));
-    if (!picks.length) picks = ["es_rvr", "he_wlc", "en_kjv"];
+    // el "slot" del original sigue el idioma del libro (hebreo/griego)
+    let picks = Store.get("compare").map((id) =>
+      (id === "he_wlc" || id === "gr_sblgnt") ? origId : id)
+      .filter((id) => options.some((o) => o.id === id));
+    picks = [...new Set(picks)];
+    if (!picks.length) picks = ["es_rvr", origId, "en_kjv"];
     Store.set("compare", picks);
-    const words = (heb.chapters[c - 1] || [])[v - 1] || [];
+    const words = (orig.chapters[c - 1] || [])[v - 1] || [];
 
     const frag = document.createDocumentFragment();
-    frag.appendChild(explainerCard());
-    frag.appendChild(el("p", "study-intro", "Estudia este versículo en 7 pasos. Toca cada paso para abrirlo. No necesitas saber hebreo: la app te explica todo."));
+    frag.appendChild(explainerCard(lang));
+    frag.appendChild(el("p", "study-intro", "Estudia este versículo en 7 pasos. Toca cada paso para abrirlo. No necesitas saber " + (lang === "he" ? "hebreo" : "griego") + ": la app te explica todo."));
 
     // Paso 1 — Ora y lee
     const s1 = el("div");
@@ -418,13 +428,14 @@ async function openStudy(b, c, v, esText) {
     frag.appendChild(stepCard(3, "Mira el contexto", "¿Qué hay alrededor?", s3, false));
 
     // Paso 4 — Mira el original
+    const origAdj = lang === "he" ? "hebreo" : "griego";
     const s4 = el("div");
-    s4.appendChild(el("p", "step-q", "Compara el versículo en español con sus palabras en hebreo. Cada palabra aparece en su orden original con su significado, para que veas cuál es cuál."));
+    s4.appendChild(el("p", "step-q", `Compara el versículo en español con sus palabras en ${origAdj}. Cada palabra aparece en su orden original con su significado, para que veas cuál es cuál.`));
     s4.appendChild(el("div", "study-es", `<span class="verse__n">${v}</span>${esc(esText)}`));
-    s4.appendChild(legendCard());
-    s4.appendChild(buildWordByWord(words, dict, esMap));
-    s4.appendChild(el("p", "step-note", "⚠️ El hebreo y el español no van palabra por palabra en el mismo orden, y una palabra hebrea puede traducirse con varias (o ninguna). Guíate por el significado. El sentido real lo decide el contexto, no solo el diccionario."));
-    frag.appendChild(stepCard(4, "Mira el original", "Las palabras en hebreo y su significado", s4, false));
+    s4.appendChild(legendCard(lang));
+    s4.appendChild(buildWordByWord(words, dict, esMap, lang));
+    s4.appendChild(el("p", "step-note", `⚠️ El ${origAdj} y el español no van palabra por palabra en el mismo orden, y una palabra puede traducirse con varias (o ninguna). Guíate por el significado. El sentido real lo decide el contexto, no solo el diccionario.`));
+    frag.appendChild(stepCard(4, "Mira el original", `Las palabras en ${origAdj} y su significado`, s4, false));
 
     // Paso 5 — Compara
     const s5 = el("div");
@@ -470,16 +481,21 @@ async function openStudy(b, c, v, esText) {
 }
 
 /* --- piezas de la guía de estudio --- */
-function explainerCard() {
+function explainerCard(lang) {
+  const he = lang !== "gr";
   const d = el("details", "explainer");
   d.appendChild(el("summary", null, "❓ ¿Primera vez? Qué significan estas cosas"));
   const body = el("div", "explainer__b");
+  const porque = he
+    ? "<p><b>¿Por qué el hebreo?</b> El Antiguo Testamento se escribió en hebreo. Mirar la palabra original ayuda a entender mejor al autor, más allá de la traducción.</p>" +
+      "<p><b>La palabra en hebreo</b> se lee de derecha a izquierda (ejemplo: הָיָה).</p>"
+    : "<p><b>¿Por qué el griego?</b> El Nuevo Testamento se escribió en griego. Mirar la palabra original ayuda a entender mejor al autor, más allá de la traducción.</p>" +
+      "<p><b>La palabra en griego</b> se lee de izquierda a derecha (ejemplo: ἀγάπη).</p>";
   body.innerHTML =
     "<p><b>¿Qué método sigue esta guía?</b> El <b>método inductivo</b>, el más usado para estudiar la Biblia: observar, interpretar y aplicar, añadiendo el <b>contexto</b> (en español se enseña como <b>OICA</b>). La meta: entender qué quiso decir el autor en su tiempo y qué significa hoy.</p>" +
-    "<p><b>¿Por qué el hebreo?</b> El Antiguo Testamento se escribió en hebreo. Mirar la palabra original ayuda a entender mejor al autor, más allá de la traducción.</p>" +
-    "<p><b>La palabra en hebreo</b> se lee de derecha a izquierda (ejemplo: הָיָה).</p>" +
-    "<p><b>La pronunciación</b> (en <i>cursiva</i>, como «háyah») te dice cómo suena.</p>" +
-    "<p><b>El código Strong</b> (como «H1961») es un número que identifica cada palabra hebrea; con él ves su significado y dónde más aparece, aunque no sepas hebreo.</p>";
+    porque +
+    "<p><b>La pronunciación</b> (en <i>cursiva</i>) te dice cómo suena la palabra.</p>" +
+    "<p><b>El código Strong</b> (como «" + (he ? "H1961" : "G26") + "») es un número que identifica cada palabra original; con él ves su significado y dónde más aparece, aunque no sepas " + (he ? "hebreo" : "griego") + ".</p>";
   d.appendChild(body);
   return d;
 }
@@ -503,16 +519,19 @@ function noteBox(ref, key, placeholder) {
   wrap.appendChild(ta);
   return wrap;
 }
-function legendCard() {
+function legendCard(lang) {
+  const pal = (lang === "gr") ? "palabra griega" : "palabra hebrea";
   return el("div", "legend",
-    "En cada tarjeta: <b>palabra hebrea</b> · <i>cómo suena</i> · <b>significado en español</b> · su <b>código</b>. Toca una tarjeta para ver todo.");
+    `En cada tarjeta: <b>${pal}</b> · <i>cómo suena</i> · <b>significado en español</b> · su <b>código</b>. Toca una tarjeta para ver todo.`);
 }
-function buildWordByWord(words, dict, esMap) {
+function buildWordByWord(words, dict, esMap, lang) {
+  const pfx = (lang === "gr") ? "G" : "H";
   const list = el("div", "sw-list");
   words.forEach((w) => {
-    if (!w.h) return;
-    const code = w.s ? "H" + w.s : null;
-    const codeA = w.sa ? "H" + w.sa : null;
+    const wordText = w.h || w.g;
+    if (!wordText) return;
+    const code = w.s ? pfx + w.s : null;
+    const codeA = w.sa ? pfx + w.sa : null;
     const entry = code ? dict[code] : null;
     let mean = (code && esMap[code]) || (codeA && esMap[codeA]) || "";
     let enOnly = false;
@@ -526,8 +545,9 @@ function buildWordByWord(words, dict, esMap) {
     if (rest.length > 55) rest = rest.slice(0, 55) + "…";
     const translit = entry ? entry.xlit : "";
     const row = el("div", "sw-word");
+    const wcls = (lang === "gr") ? "sw-word__grk" : "sw-word__heb";
     row.innerHTML =
-      `<span class="sw-word__heb">${esc(w.h)}</span>` +
+      `<span class="${wcls}">${esc(wordText)}</span>` +
       `<span class="sw-word__mid">` +
         (translit ? `<span class="sw-word__translit">${esc(translit)}</span>` : "") +
         `<span class="sw-word__mean"><b>${esc(primary || "—")}</b>${enOnly ? ' <i class="en">(ingl.)</i>' : ""}` +
@@ -549,7 +569,8 @@ function compareSelector(b, c, v, options) {
     const paint = () => {
       const on = Store.get("compare").includes(o.id);
       chip.className = "vchip" + (on ? " on" : "");
-      chip.innerHTML = `<span class="vchip__c">${on ? "✓" : "＋"}</span> ${esc(o.lang)}${o.id !== "he_wlc" ? ` <small>${esc(o.name)}</small>` : ""}`;
+      const hideName = (o.id === "he_wlc" || o.id === "gr_sblgnt");
+      chip.innerHTML = `<span class="vchip__c">${on ? "✓" : "＋"}</span> ${esc(o.lang)}${hideName ? "" : ` <small>${esc(o.name)}</small>`}`;
     };
     chip.onclick = () => {
       let arr = Store.get("compare").slice();
@@ -580,18 +601,22 @@ async function drawStudyRows(b, c, v, options) {
     const row = el("div", "cmp-row");
     // etiqueta en español, con el idioma bien visible (p.ej. HEBREO)
     row.appendChild(el("div", "cmp-row__h", `<b>${esc(o.lang)}</b> <small>${esc(o.name || "")}</small>`));
-    let txt = "—", rtl = false;
+    let txt = "—", rtl = false, grk = false;
     try {
       if (id === "he_wlc") {
         const heb = await Data.hebrew(b.id);
         const ws = (heb.chapters[c - 1] || [])[v - 1] || [];
         txt = ws.map((w) => w.h).join(" "); rtl = true;
+      } else if (id === "gr_sblgnt") {
+        const gk = await Data.greek(b.id);
+        const ws = (gk.chapters[c - 1] || [])[v - 1] || [];
+        txt = ws.map((w) => w.g).join(" "); grk = true;
       } else {
         const arr = await Data.versionFile(o.file || `json/${id}.json`);
         txt = (arr[b.n - 1] && arr[b.n - 1].chapters[c - 1] && arr[b.n - 1].chapters[c - 1][v - 1]) || "—";
       }
     } catch (e) { txt = "(no disponible)"; }
-    row.appendChild(el("div", "cmp-row__t" + (rtl ? " rtl" : ""), esc(txt)));
+    row.appendChild(el("div", "cmp-row__t" + (rtl ? " rtl" : "") + (grk ? " grk" : ""), esc(txt)));
     frag.appendChild(row);
   }
   rows.replaceChildren(frag);
@@ -603,20 +628,22 @@ async function openWord(code, augmented) {
   $("#word").hidden = false;
   body.replaceChildren(loadingEl());
   try {
-    const dict = await Data.strongsHe();
+    const gr = code[0] === "G";
+    const idiom = gr ? "griego" : "hebreo";
+    const dict = await (gr ? Data.strongsGr() : Data.strongsHe());
     const entry = dict[code] || (augmented && dict[augmented]) || null;
-    const esMap = await Data.strongsHeEs().catch(() => ({}));
+    const esMap = await (gr ? Data.strongsGrEs() : Data.strongsHeEs()).catch(() => ({}));
     const defEs = esMap[code] || (augmented && esMap[augmented]) || null;
-    const conc = await Data.concordanceHe();
+    const conc = await (gr ? Data.concordanceGr() : Data.concordanceHe());
     const occ = conc[code] || (augmented && conc[augmented]) || { n: 0, refs: [] };
 
     const frag = document.createDocumentFragment();
-    // Cabecera: palabra hebrea y pronunciación, cada una ETIQUETADA
+    // Cabecera: palabra original y pronunciación, cada una ETIQUETADA
     const head = el("div", "wh");
     const pron = entry ? (entry.xlit + (entry.pron ? ` · ${entry.pron}` : "")) : "";
     head.innerHTML =
-      `<div class="wlab">Palabra en hebreo</div>` +
-      `<div class="wh__h">${entry ? esc(entry.lemma) : "—"}</div>` +
+      `<div class="wlab">Palabra en ${idiom}</div>` +
+      `<div class="wh__h${gr ? " wh__h--grk" : ""}">${entry ? esc(entry.lemma) : "—"}</div>` +
       (pron ? `<div class="wlab">Cómo se pronuncia</div><div class="wh__x"><i>${esc(pron)}</i></div>` : "");
     frag.appendChild(head);
 
@@ -628,7 +655,7 @@ async function openWord(code, augmented) {
     const codeBox = el("div", "wcode");
     codeBox.innerHTML =
       `<div class="wcode__top"><span class="wcode__badge">${code}</span><span class="wcode__t">Código Strong</span></div>` +
-      `<p class="muted">Es el número que identifica esta palabra hebrea. Con él puedes ver su significado exacto y todos los versículos donde aparece, aunque no sepas hebreo.</p>`;
+      `<p class="muted">Es el número que identifica esta palabra ${idiom}. Con él puedes ver su significado exacto y todos los versículos donde aparece, aunque no sepas ${idiom}.</p>`;
     frag.appendChild(codeBox);
 
     // Detalle adicional en inglés (opcional)

@@ -21,10 +21,13 @@ export const Data = {
   books: () => getJSON("data/books.json"),
   es: (bookId) => getJSON(`data/es/${bookId}.json`),
   hebrew: (bookId) => getJSON(`data/hebrew/${bookId}.json`),
+  greek: (bookId) => getJSON(`data/greek/${bookId}.json`),
   strongsHe: () => getJSON("data/strongs_he.json"),
   strongsHeEs: () => getJSON("data/strongs_he_es.json"),
   strongsGr: () => getJSON("data/strongs_gr.json"),
+  strongsGrEs: () => getJSON("data/strongs_gr_es.json"),
   concordanceHe: () => getJSON("data/concordance_he.json"),
+  concordanceGr: () => getJSON("data/concordance_gr.json"),
   versions: () => getJSON("data/versions.json"),
   booksIntro: () => getJSON("data/books_intro.json"),
   // Archivos de versiones del repo original: [{abbrev, name, chapters:[[...]]}]

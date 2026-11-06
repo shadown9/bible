@@ -272,8 +272,8 @@ def build_strongs(use_net=True):
             # key = "H1" / "G1" -> guardamos sólo lo útil y compacto
             out[key] = {
                 "lemma": e.get("lemma", ""),
-                "xlit": e.get("xlit", ""),
-                "pron": e.get("pron", ""),
+                "xlit": e.get("xlit") or e.get("translit") or "",
+                "pron": e.get("pron") or e.get("pronunciation") or "",
                 "def": e.get("strongs_def", "") or "",
                 "kjv": e.get("kjv_def", "") or "",
                 "deriv": e.get("derivation", "") or "",
@@ -303,6 +303,7 @@ def build_books():
             "testament": test,
             "chapters": caps.get(abbrev, 0),
             "hasHebrew": test == "AT",
+            "hasGreek": test == "NT",
         })
     json.dump(out, open(os.path.join(DATA, "books.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=0)

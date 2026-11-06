@@ -222,6 +222,10 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .sw-word:active { background: var(--surface-2); }
 .sw-word__heb { font-family: var(--ff-heb); font-size: 2rem; color: var(--hebrew); direction: rtl;
   min-width: 92px; text-align: center; flex: none; line-height: 1.25; }
+.sw-word__grk { font-family: var(--ff-read); font-size: 1.5rem; color: var(--hebrew); direction: ltr;
+  min-width: 92px; text-align: center; flex: none; line-height: 1.3; }
+.wh__h--grk { font-family: var(--ff-read); font-size: 2.2rem; }
+.cmp-row__t.grk { direction: ltr; text-align: left; font-family: var(--ff-read); font-size: 1.18rem; color: var(--hebrew); line-height: 1.5; }
 .sw-word__mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .sw-word__translit { font-size: .8rem; color: var(--text-soft); font-style: italic; }
 .sw-word__mean { font-size: 1.02rem; color: var(--text); line-height: 1.35; }
@@ -340,6 +344,7 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: .45rem; }
 .book-grid button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: .6rem .4rem; font-size: .84rem; text-align: center; }
 .book-grid button.heb::after { content: "עב"; display: block; font-family: var(--ff-heb); font-size: .72rem; color: var(--strong); margin-top: 2px; }
+.book-grid button.grk::after { content: "Ω"; display: block; font-size: .72rem; color: var(--strong); margin-top: 2px; }
 .chap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: .4rem; }
 .chap-grid button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: .65rem 0; font-weight: 700; }
 .backlink { background: none; border: none; color: var(--accent-soft); font-weight: 700; padding: 0 0 .7rem; font-size: .95rem; }
