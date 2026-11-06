@@ -225,6 +225,8 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .sw-word__mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .sw-word__translit { font-size: .8rem; color: var(--text-soft); font-style: italic; }
 .sw-word__mean { font-size: 1.02rem; color: var(--text); line-height: 1.35; }
+.sw-word__mean b { font-weight: 700; }
+.sw-word__more { display: block; font-size: .82rem; color: var(--text-soft); margin-top: 1px; }
 .sw-word__mean .en { color: var(--text-soft); font-size: .8rem; }
 .sw-word__code { font-size: .72rem; font-weight: 800; color: var(--gold); flex: none; white-space: nowrap; }
 

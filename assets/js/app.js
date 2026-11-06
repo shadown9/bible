@@ -397,7 +397,7 @@ async function openStudy(b, c, v, esText) {
 
     const frag = document.createDocumentFragment();
     frag.appendChild(explainerCard());
-    frag.appendChild(el("p", "study-intro", "Estudia este versículo en 6 pasos. Toca cada paso para abrirlo. No necesitas saber hebreo: la app te explica todo."));
+    frag.appendChild(el("p", "study-intro", "Estudia este versículo en 7 pasos. Toca cada paso para abrirlo. No necesitas saber hebreo: la app te explica todo."));
 
     // Paso 1 — Ora y lee
     const s1 = el("div");
@@ -419,10 +419,11 @@ async function openStudy(b, c, v, esText) {
 
     // Paso 4 — Mira el original
     const s4 = el("div");
-    s4.appendChild(el("p", "step-q", "Mira cada palabra del hebreo con su significado en español. Toca una para ver más."));
+    s4.appendChild(el("p", "step-q", "Compara el versículo en español con sus palabras en hebreo. Cada palabra aparece en su orden original con su significado, para que veas cuál es cuál."));
+    s4.appendChild(el("div", "study-es", `<span class="verse__n">${v}</span>${esc(esText)}`));
     s4.appendChild(legendCard());
     s4.appendChild(buildWordByWord(words, dict, esMap));
-    s4.appendChild(el("p", "step-note", "⚠️ Importante: el significado real de una palabra depende del CONTEXTO donde se usa, no solo del diccionario ni de su origen. Úsalo para entender mejor, no para forzar una idea."));
+    s4.appendChild(el("p", "step-note", "⚠️ El hebreo y el español no van palabra por palabra en el mismo orden, y una palabra hebrea puede traducirse con varias (o ninguna). Guíate por el significado. El sentido real lo decide el contexto, no solo el diccionario."));
     frag.appendChild(stepCard(4, "Mira el original", "Las palabras en hebreo y su significado", s4, false));
 
     // Paso 5 — Compara
@@ -516,14 +517,22 @@ function buildWordByWord(words, dict, esMap) {
     let mean = (code && esMap[code]) || (codeA && esMap[codeA]) || "";
     let enOnly = false;
     if (!mean && entry) { mean = entry.def || entry.kjv || ""; enOnly = true; }
-    if (mean.length > 95) mean = mean.slice(0, 95) + "…";
+    // separar el significado principal (la palabra clave) del resto
+    let primary = mean, rest = "";
+    if (mean) {
+      const cut = mean.search(/[;,]/);
+      if (cut > 0) { primary = mean.slice(0, cut).trim(); rest = mean.slice(cut + 1).trim(); }
+    }
+    if (rest.length > 55) rest = rest.slice(0, 55) + "…";
     const translit = entry ? entry.xlit : "";
     const row = el("div", "sw-word");
     row.innerHTML =
       `<span class="sw-word__heb">${esc(w.h)}</span>` +
       `<span class="sw-word__mid">` +
         (translit ? `<span class="sw-word__translit">${esc(translit)}</span>` : "") +
-        `<span class="sw-word__mean">${esc(mean || "—")}${enOnly ? ' <i class="en">(ingl.)</i>' : ""}</span>` +
+        `<span class="sw-word__mean"><b>${esc(primary || "—")}</b>${enOnly ? ' <i class="en">(ingl.)</i>' : ""}` +
+          (rest ? `<span class="sw-word__more">${esc(rest)}</span>` : "") +
+        `</span>` +
       `</span>` +
       (code ? `<span class="sw-word__code">${code} ›</span>` : "");
     if (code) row.onclick = () => openWord(code, codeA);
