@@ -49,7 +49,8 @@ data/                      # base de datos generada (ver más abajo)
   books.json               # metadatos de los 66 libros
   es/<libro>.json          # texto RV1909 por libro
   hebrew/<libro>.json      # AT hebreo interlineal (palabra + Strong + morfología)
-  strongs_he.json          # diccionario Strong hebreo
+  strongs_he.json          # diccionario Strong hebreo (inglés)
+  strongs_he_es.json       # significados en español (1000 términos más frecuentes)
   strongs_gr.json          # diccionario Strong griego
   concordance_he.json      # concordancia hebrea (Strong -> apariciones)
   versions.json            # catálogo de versiones para comparar
@@ -81,8 +82,9 @@ python3 -m http.server 8777
 
 ## 🗺️ Hoja de ruta
 
+- Definiciones Strong **en español**: hechas para los ~1000 términos más
+  frecuentes (85% de las palabras del AT); ampliar a cobertura total.
 - Interlineal **griego** del Nuevo Testamento (con Strong).
-- Definiciones Strong **traducidas al español**.
 - Vocabulario hebreo con **repetición espaciada** (tipo tarjetas).
 - Planes de lectura, racha diaria y logros.
 - Notas y resaltados del usuario.

@@ -22,6 +22,7 @@ export const Data = {
   es: (bookId) => getJSON(`data/es/${bookId}.json`),
   hebrew: (bookId) => getJSON(`data/hebrew/${bookId}.json`),
   strongsHe: () => getJSON("data/strongs_he.json"),
+  strongsHeEs: () => getJSON("data/strongs_he_es.json"),
   strongsGr: () => getJSON("data/strongs_gr.json"),
   concordanceHe: () => getJSON("data/concordance_he.json"),
   versions: () => getJSON("data/versions.json"),

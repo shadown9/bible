@@ -3,7 +3,7 @@
    - App shell (HTML/CSS/JS/iconos): cache-first con actualización en segundo plano.
    - Datos (data/… y json/…): cache-first; una vez visitados, quedan sin conexión.
    Sube CACHE_VERSION cuando cambie la app para refrescar la caché. */
-const CACHE_VERSION = "biblia-v1";
+const CACHE_VERSION = "biblia-v2";
 const SHELL = [
   "./",
   "index.html",
@@ -15,6 +15,7 @@ const SHELL = [
   "assets/icons/icon.svg",
   "data/books.json",
   "data/versions.json",
+  "data/strongs_he_es.json",
 ];
 
 self.addEventListener("install", (e) => {

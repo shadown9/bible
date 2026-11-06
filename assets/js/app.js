@@ -220,6 +220,8 @@ async function openWord(code, augmented) {
   try {
     const dict = await Data.strongsHe();
     const entry = dict[code] || (augmented && dict[augmented]) || null;
+    const es = await Data.strongsHeEs().catch(() => ({}));
+    const defEs = es[code] || (augmented && es[augmented]) || null;
     const conc = await Data.concordanceHe();
     const occ = conc[code] || (augmented && conc[augmented]) || { n: 0, refs: [] };
 
@@ -231,12 +233,17 @@ async function openWord(code, augmented) {
       `<span class="wh__code">${code}${augmented && augmented !== code ? " (" + augmented + ")" : ""}</span>`;
     frag.appendChild(head);
 
+    if (defEs) {
+      frag.appendChild(wsec("Significado (español)", esc(defEs)));
+    }
     if (entry) {
-      frag.appendChild(wsec("Definición (Strong)", esc(entry.def || entry.kjv || "—")));
+      frag.appendChild(wsec(defEs ? "Definición ampliada (Strong, inglés)" : "Definición (Strong, inglés)",
+        esc(entry.def || entry.kjv || "—")));
       if (entry.deriv) frag.appendChild(wsec("Origen", esc(entry.deriv)));
       if (entry.kjv && entry.kjv !== entry.def)
         frag.appendChild(wsec("Traducido como (KJV)", esc(entry.kjv)));
-      frag.appendChild(el("p", "muted", "ℹ️ Las definiciones Strong son de dominio público y están en inglés; la traducción al español está en la hoja de ruta."));
+      if (!defEs)
+        frag.appendChild(el("p", "muted", "ℹ️ El significado en español está disponible para los ~1000 términos más frecuentes; esta palabra es menos común y por ahora se muestra el Strong en inglés."));
     } else {
       frag.appendChild(el("p", "muted", "No hay entrada de diccionario para esta palabra."));
     }
