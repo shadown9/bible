@@ -171,35 +171,53 @@ function tipCard() {
   return t;
 }
 
-/* ------------------- Menú de acciones del versículo ------------------- */
+/* ------------------- Menú de acciones del versículo -------------------
+   Los botones leen el estado EN VIVO y actualizan en el sitio (sin
+   reconstruir el menú), para que marcar/desmarcar varias veces sea fiable
+   también en el móvil. */
 function openVerse(b, c, v, text) {
   const ref = `${b.id}:${c}:${v}`;
   $("#verseHead").innerHTML = `<strong>${esc(b.name)} ${c}:${v}</strong><p>${esc(text)}</p>`;
 
   // franja de colores
   const sw = $("#swatches"); sw.replaceChildren();
-  const cur = Store.getHighlight(ref);
   COLORS.forEach((col) => {
-    const s = el("button", "swatch" + (cur === col ? " sel" : ""));
-    s.dataset.c = col;
+    const s = el("button", "swatch"); s.dataset.c = col;
     s.setAttribute("aria-label", "Resaltar " + col);
-    s.onclick = () => setColor(ref, cur === col ? null : col, b, c, v, text);
+    s.onclick = () => {
+      const now = Store.getHighlight(ref);
+      const next = now === col ? null : col;       // mismo color = quitar
+      Store.setHighlight(ref, next);
+      updateVerseDom(ref); updateMarksBadge(); refreshSwatches(ref);
+      toast(next ? "Resaltado ✓" : "Resaltado quitado");
+    };
     sw.appendChild(s);
   });
-  const none = el("button", "swatch swatch--none" + (!cur ? " sel" : ""), "✕");
+  const none = el("button", "swatch swatch--none", "✕");
   none.setAttribute("aria-label", "Quitar resaltado");
-  none.onclick = () => setColor(ref, null, b, c, v, text);
+  none.onclick = () => {
+    Store.setHighlight(ref, null);
+    updateVerseDom(ref); updateMarksBadge(); refreshSwatches(ref);
+    toast("Resaltado quitado");
+  };
   sw.appendChild(none);
+  refreshSwatches(ref);
 
   // acciones
   const acts = $("#verseActions"); acts.replaceChildren();
-  const fav = Store.isFavorite(ref);
-  acts.appendChild(actionBtn(fav ? "★" : "☆", fav ? "En favoritos" : "Favorito", fav ? "on" : "", () => {
-    const now = Store.toggleFavorite(ref);
-    updateVerseDom(ref); updateMarksBadge();
-    openVerse(b, c, v, text); // refresca el menú
-    toast(now ? "Guardado en favoritos ⭐" : "Quitado de favoritos");
-  }));
+  const fav = el("button", "action");
+  const paintFav = () => {
+    const on = Store.isFavorite(ref);
+    fav.className = "action" + (on ? " on" : "");
+    fav.innerHTML = `<span class="action__i">${on ? "★" : "☆"}</span><span>${on ? "En favoritos" : "Favorito"}</span>`;
+  };
+  fav.onclick = () => {
+    const on = Store.toggleFavorite(ref);
+    updateVerseDom(ref); updateMarksBadge(); paintFav();
+    toast(on ? "Guardado en favoritos ⭐" : "Quitado de favoritos");
+  };
+  paintFav();
+  acts.appendChild(fav);
   acts.appendChild(actionBtn("📋", "Copiar", "", () => copyVerse(`${b.name} ${c}:${v}`, text)));
   if (b.hasHebrew)
     acts.appendChild(actionBtn("עב", "Ver en hebreo", "", () => { $("#verse").hidden = true; openHebrew(b, c, v, text); }));
@@ -207,19 +225,18 @@ function openVerse(b, c, v, text) {
 
   $("#verse").hidden = false;
 }
+function refreshSwatches(ref) {
+  const cur = Store.getHighlight(ref);
+  $$("#swatches .swatch").forEach((s) => {
+    const on = s.classList.contains("swatch--none") ? !cur : (s.dataset.c === cur);
+    s.classList.toggle("sel", on);
+  });
+}
 function actionBtn(icon, label, extra, fn) {
   const b = el("button", "action " + extra);
   b.innerHTML = `<span class="action__i">${icon}</span><span>${label}</span>`;
   b.onclick = fn;
   return b;
-}
-
-function setColor(ref, color, b, c, v, text) {
-  Store.setHighlight(ref, color);
-  updateVerseDom(ref);
-  updateMarksBadge();
-  openVerse(b, c, v, text); // refresca el estado de la franja
-  toast(color ? "Resaltado ✓" : "Resaltado quitado");
 }
 
 // actualiza en el acto el versículo visible (sin recargar el capítulo)
@@ -265,55 +282,82 @@ async function openHebrew(b, c, v, esText) {
   } catch (e) { body.replaceChildren(errorEl(e)); }
 }
 
-/* -------------------- Comparar un versículo (panel) -------------------- */
+/* -------------------- Comparar un versículo (panel) --------------------
+   Lista de versiones SIEMPRE visible (no se colapsa), etiquetada por
+   idioma e incluyendo el hebreo original. Al tocar una versión se
+   actualizan solo las filas; la lista se queda donde está. */
 async function openCompare(b, c, v) {
   $("#panelTitle").textContent = `${b.name} ${c}:${v} — Comparar`;
   const body = $("#panelBody"); body.replaceChildren(loadingEl());
   $("#panel").hidden = false;
-  await drawCompare(b, c, v);
-}
-async function drawCompare(b, c, v) {
-  const body = $("#panelBody");
   try {
     const vers = await Data.versions();
-    const picks = Store.get("compare");
-    const frag = document.createDocumentFragment();
+    const options = [];
+    if (b.hasHebrew) options.push({ id: "he_wlc", name: "Hebreo (original)", lang: "Hebreo", rtl: true });
+    vers.forEach((x) => options.push(x));
 
-    for (const id of picks) {
-      const meta = vers.find((x) => x.id === id) || { name: id, lang: "" };
-      const row = el("div", "cmp-row");
-      row.appendChild(el("div", "cmp-row__h", `${esc(meta.name)} <small>${esc(meta.lang)}</small>`));
-      let txt = "—";
-      try {
-        const arr = await Data.versionFile(meta.file || `json/${id}.json`);
-        txt = (arr[b.n - 1] && arr[b.n - 1].chapters[c - 1] && arr[b.n - 1].chapters[c - 1][v - 1]) || "—";
-      } catch (e) { txt = "(no disponible)"; }
-      row.appendChild(el("div", "cmp-row__t", esc(txt)));
-      frag.appendChild(row);
-    }
+    // asegura al menos una versión válida elegida
+    let picks = Store.get("compare").filter((id) => options.some((o) => o.id === id));
+    if (!picks.length) picks = ["es_rvr"];
+    Store.set("compare", picks);
 
-    // selector compacto
-    const det = el("details", "cmp-add");
-    det.appendChild(el("summary", null, "➕ Añadir o quitar versiones"));
-    const pick = el("div", "cmp-pick");
-    vers.forEach((o) => {
-      const on = picks.includes(o.id);
-      const p = el("button", "pill" + (on ? " is-active" : ""), `${o.name}`);
-      p.onclick = () => {
-        let arr = Store.get("compare").slice();
-        if (arr.includes(o.id)) arr = arr.filter((x) => x !== o.id);
-        else if (arr.length < 4) arr.push(o.id);
-        else { toast("Máximo 4 versiones"); return; }
-        Store.set("compare", arr);
-        det.open = true; drawCompare(b, c, v);
+    const wrap = el("div");
+    wrap.appendChild(el("p", "muted", "Este versículo en las versiones que elijas:"));
+    const rows = el("div"); rows.id = "cmpRows"; wrap.appendChild(rows);
+    wrap.appendChild(el("h4", "cmp-sel-h", "Toca para añadir o quitar versiones"));
+    const sel = el("div", "cmp-pick");
+    options.forEach((o) => {
+      const chip = el("button", "vchip");
+      const paint = () => {
+        const on = Store.get("compare").includes(o.id);
+        chip.className = "vchip" + (on ? " on" : "");
+        chip.innerHTML = `<span class="vchip__c">${on ? "✓" : "＋"}</span> ${esc(o.name)} <small>${esc(o.lang)}</small>`;
       };
-      pick.appendChild(p);
+      chip.onclick = () => {
+        let arr = Store.get("compare").slice();
+        if (arr.includes(o.id)) {
+          if (arr.length <= 1) { toast("Deja al menos una versión"); return; }
+          arr = arr.filter((x) => x !== o.id);
+        } else {
+          if (arr.length >= 5) { toast("Máximo 5 versiones a la vez"); return; }
+          arr.push(o.id);
+        }
+        Store.set("compare", arr);
+        paint(); drawCompareRows(b, c, v, options);
+      };
+      paint();
+      sel.appendChild(chip);
     });
-    det.appendChild(pick);
-    frag.appendChild(det);
-
-    body.replaceChildren(frag);
+    wrap.appendChild(sel);
+    body.replaceChildren(wrap);
+    await drawCompareRows(b, c, v, options);
   } catch (e) { body.replaceChildren(errorEl(e)); }
+}
+
+async function drawCompareRows(b, c, v, options) {
+  const rows = $("#cmpRows"); if (!rows) return;
+  rows.replaceChildren(loadingEl());
+  const picks = Store.get("compare");
+  const frag = document.createDocumentFragment();
+  for (const id of picks) {
+    const o = options.find((x) => x.id === id) || { name: id, lang: "" };
+    const row = el("div", "cmp-row");
+    row.appendChild(el("div", "cmp-row__h", `${esc(o.name)} <small>${esc(o.lang)}</small>`));
+    let txt = "—", rtl = false;
+    try {
+      if (id === "he_wlc") {
+        const heb = await Data.hebrew(b.id);
+        const ws = (heb.chapters[c - 1] || [])[v - 1] || [];
+        txt = ws.map((w) => w.h).join(" "); rtl = true;
+      } else {
+        const arr = await Data.versionFile(o.file || `json/${id}.json`);
+        txt = (arr[b.n - 1] && arr[b.n - 1].chapters[c - 1] && arr[b.n - 1].chapters[c - 1][v - 1]) || "—";
+      }
+    } catch (e) { txt = "(no disponible)"; }
+    row.appendChild(el("div", "cmp-row__t" + (rtl ? " rtl" : ""), esc(txt)));
+    frag.appendChild(row);
+  }
+  rows.replaceChildren(frag);
 }
 
 /* --------------- Estudio de palabra (diccionario Strong) --------------- */

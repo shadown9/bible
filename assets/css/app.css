@@ -147,10 +147,14 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .cmp-row__h small { color: var(--text-soft); font-weight: 500; }
 .cmp-row__t { padding: .6rem .8rem; font-family: var(--ff-read); font-size: 1.02rem; line-height: 1.6; }
 .cmp-row__t.rtl { direction: rtl; text-align: right; font-family: var(--ff-heb); font-size: 1.4rem; color: var(--hebrew); }
-.cmp-add { margin-top: .4rem; }
-.cmp-add summary { cursor: pointer; color: var(--accent-soft); font-weight: 600; padding: .5rem 0; list-style: none; }
-.cmp-add summary::-webkit-details-marker { display: none; }
-.cmp-pick { display: flex; flex-wrap: wrap; gap: .4rem; padding: .3rem 0 .6rem; }
+.cmp-sel-h { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-soft); margin: 1.1rem 0 .55rem; }
+.cmp-pick { display: flex; flex-wrap: wrap; gap: .45rem; padding: .1rem 0 .6rem; }
+.vchip { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px;
+  padding: .5rem .85rem; font-size: .88rem; display: inline-flex; align-items: center; gap: .35rem; }
+.vchip small { color: var(--text-soft); font-size: .76rem; }
+.vchip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.vchip.on small { color: var(--accent-ink); opacity: .85; }
+.vchip__c { font-weight: 800; }
 
 /* ---------- Buscar ---------- */
 .search-box { display: flex; gap: .5rem; margin-bottom: 1rem; }
