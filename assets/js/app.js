@@ -924,18 +924,26 @@ const MEM_MODES = {
   hueco:     { name: "⬜ Rellena los huecos", hint: "Toca las palabras que faltan, en orden:" },
   letra:     { name: "🔤 Primera letra", hint: "Solo ves la primera letra. Toca las palabras en orden de memoria:" },
 };
-// conjuntos de modos disponibles por nivel (0..5); se elige uno al azar
+// Conjuntos de modos por nivel (0..5). Cada nivel ofrece varios juegos para
+// que haya variedad DESDE EL PRIMER versículo; al subir de nivel entran los
+// modos más difíciles (y desaparece la ayuda del texto a la vista).
 const MEM_LEVEL_MODES = [
-  ["armaLearn"],        // 0 · nuevo: aprender con el texto a la vista
-  ["arma", "trozos"],   // 1
-  ["trozos", "hueco"],  // 2
-  ["hueco", "arma"],    // 3
-  ["hueco", "letra"],   // 4
-  ["letra"],            // 5 · dominado: todo de memoria
+  ["armaLearn", "arma", "trozos"],   // 0 · nuevo
+  ["arma", "trozos", "hueco"],       // 1
+  ["trozos", "hueco", "arma"],       // 2
+  ["hueco", "arma", "letra"],        // 3
+  ["hueco", "letra", "trozos"],      // 4
+  ["letra", "hueco"],                // 5 · dominado
 ];
+let lastMode = null;
 function modeForLevel(lvl) {
   const set = MEM_LEVEL_MODES[Math.max(0, Math.min(lvl | 0, 5))];
-  return set[Math.floor(Math.random() * set.length)];
+  let m = set[Math.floor(Math.random() * set.length)];
+  if (m === lastMode && set.length > 1) {        // no repetir el mismo juego dos veces seguidas
+    m = set[(set.indexOf(m) + 1) % set.length];
+  }
+  lastMode = m;
+  return m;
 }
 function firstLetterMask(w) {
   const n = w.length;
