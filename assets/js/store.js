@@ -1,17 +1,19 @@
 /* ============================================================
-   store.js — estado del usuario (preferencias y posición) en
-   localStorage, con manejo seguro de errores.
+   store.js — preferencias, posición y MARCAS del usuario
+   (resaltados de colores y favoritos) en localStorage, con
+   manejo seguro de errores.
    ============================================================ */
 
-const KEY = "biblia-estudio:v1";
+const KEY = "biblia-estudio:v2";
 
 const DEFAULTS = {
   theme: "auto",          // auto | light | dark
-  fontSize: 1.12,         // rem del texto de lectura
-  interlinear: false,     // mostrar interlineal hebreo en Leer
-  showStrongs: true,      // mostrar nº de Strong bajo cada palabra
+  fontSize: 1.14,         // rem del texto de lectura
   last: { book: "genesis", chapter: 1 }, // última posición
   compare: ["es_rvr", "en_kjv"],         // versiones elegidas para comparar
+  highlights: {},         // "libro:cap:ver" -> color (amarillo|verde|azul|rosa|naranja)
+  favorites: [],          // ["libro:cap:ver", ...] (más reciente primero)
+  seenTip: false,         // si ya mostramos el consejo inicial
 };
 
 let state = load();
@@ -21,7 +23,7 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
   } catch (e) { /* almacenamiento no disponible */ }
-  return { ...DEFAULTS };
+  return JSON.parse(JSON.stringify(DEFAULTS));
 }
 
 function persist() {
@@ -34,4 +36,28 @@ export const Store = {
   set: (k, v) => { state[k] = v; persist(); },
   all: () => ({ ...state }),
   setLast: (book, chapter) => { state.last = { book, chapter }; persist(); },
+
+  // --- Resaltados ---
+  getHighlight: (ref) => state.highlights[ref] || null,
+  setHighlight: (ref, color) => {
+    if (color) state.highlights[ref] = color;
+    else delete state.highlights[ref];
+    persist();
+  },
+  highlights: () => ({ ...state.highlights }),
+
+  // --- Favoritos ---
+  isFavorite: (ref) => state.favorites.includes(ref),
+  toggleFavorite: (ref) => {
+    const i = state.favorites.indexOf(ref);
+    if (i >= 0) state.favorites.splice(i, 1);
+    else state.favorites.unshift(ref);
+    persist();
+    return state.favorites.includes(ref);
+  },
+  favorites: () => [...state.favorites],
+
+  // conteo de marcas (para la pestaña)
+  marksCount: () =>
+    state.favorites.length + Object.keys(state.highlights).length,
 };

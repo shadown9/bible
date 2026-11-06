@@ -1,5 +1,8 @@
 /* ============================================================
-   app.js — controlador de la aplicación.
+   app.js — controlador (rediseño simple y táctil)
+   Idea central: la lectura está siempre limpia; tocas un
+   versículo y aparece TODO (resaltar, favorito, hebreo,
+   comparar, copiar).
    ============================================================ */
 import { Data, books, bookById, bookByNum } from "./data.js";
 import { Store } from "./store.js";
@@ -12,14 +15,13 @@ const el = (tag, cls, html) => {
   if (html != null) n.innerHTML = html;
   return n;
 };
-const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-// Estado de navegación
+const COLORS = ["amarillo", "verde", "azul", "rosa", "naranja"];
 const nav = { book: Store.get("last").book, chapter: Store.get("last").chapter };
 let BOOKS = [];
 
-// --- versículos para "del día" ---
 const DAILY = [
   ["juan", 3, 16], ["salmos", 23, 1], ["genesis", 1, 1], ["proverbios", 3, 5],
   ["filipenses", 4, 13], ["isaias", 41, 10], ["romanos", 8, 28], ["josue", 1, 9],
@@ -29,43 +31,36 @@ const DAILY = [
   ["santiago", 1, 5], ["galatas", 5, 22], ["isaias", 40, 31], ["deuteronomio", 31, 6],
 ];
 
-/* ---------------------------------------------------------------
-   Arranque
---------------------------------------------------------------- */
+/* ----------------------------- Arranque ----------------------------- */
 async function init() {
   applyTheme(Store.get("theme"));
   document.documentElement.style.setProperty("--fs-read", Store.get("fontSize") + "rem");
   BOOKS = await books();
 
-  // Pestañas inferiores
   $$(".tab").forEach((t) => t.addEventListener("click", () => showView(t.dataset.view)));
-  // Barra superior
   $("#btnNav").addEventListener("click", openNavigator);
   $("#btnTheme").addEventListener("click", cycleTheme);
-  $("#btnInterlinear").addEventListener("click", toggleInterlinear);
-  // Cerrar hojas
-  $$("[data-close]").forEach((b) => b.addEventListener("click", closeSheets));
+  // cada botón/fondo [data-close] cierra SOLO su propia hoja (permite apilar)
+  document.addEventListener("click", (e) => {
+    const c = e.target.closest("[data-close]");
+    if (c) { const s = c.closest(".sheet"); if (s) s.hidden = true; }
+  });
 
-  $("#btnInterlinear").setAttribute("aria-pressed", String(Store.get("interlinear")));
+  updateMarksBadge();
   await renderReader();
   registerSW();
 }
 
-/* ---------------------------------------------------------------
-   Navegación entre vistas
---------------------------------------------------------------- */
+/* --------------------------- Navegación vistas --------------------------- */
 function showView(name) {
   $$(".view").forEach((v) => v.classList.toggle("is-active", v.id === "view-" + name));
   $$(".tab").forEach((t) => t.classList.toggle("is-active", t.dataset.view === name));
   window.scrollTo({ top: 0 });
-  if (name === "compare") renderCompare();
+  if (name === "marks") renderMarks();
   if (name === "search") renderSearch();
   if (name === "settings") renderSettings();
 }
 
-/* ---------------------------------------------------------------
-   Tema
---------------------------------------------------------------- */
 function applyTheme(t) { document.documentElement.setAttribute("data-theme", t); }
 function cycleTheme() {
   const order = ["auto", "light", "dark"];
@@ -74,12 +69,9 @@ function cycleTheme() {
   toast("Tema: " + ({ auto: "automático", light: "claro", dark: "oscuro" }[next]));
 }
 
-/* ---------------------------------------------------------------
-   Selector de libro / capítulo
---------------------------------------------------------------- */
+/* --------------------------- Libro / capítulo --------------------------- */
 function openNavigator() {
-  const sheet = $("#navigator");
-  sheet.hidden = false;
+  $("#navigator").hidden = false;
   renderBookList("AT");
   $$("#navigator .pill").forEach((p) =>
     p.onclick = () => {
@@ -88,7 +80,6 @@ function openNavigator() {
     });
 }
 function renderBookList(testament) {
-  const body = $("#navBody");
   $("#navTitle").textContent = testament === "AT" ? "Antiguo Testamento" : "Nuevo Testamento";
   const grid = el("div", "book-grid");
   BOOKS.filter((b) => b.testament === testament).forEach((b) => {
@@ -96,101 +87,73 @@ function renderBookList(testament) {
     btn.onclick = () => renderChapterList(b);
     grid.appendChild(btn);
   });
-  body.replaceChildren(grid);
+  $("#navBody").replaceChildren(grid);
 }
 function renderChapterList(b) {
-  const body = $("#navBody");
   $("#navTitle").textContent = b.name;
   const back = el("button", "backlink", "‹ Libros");
   back.onclick = () => renderBookList(b.testament);
   const grid = el("div", "chap-grid");
   for (let c = 1; c <= b.chapters; c++) {
     const btn = el("button", null, String(c));
-    btn.onclick = () => { closeSheets(); goTo(b.id, c); };
+    btn.onclick = () => { $("#navigator").hidden = true; goTo(b.id, c); };
     grid.appendChild(btn);
   }
-  body.replaceChildren(back, grid);
+  $("#navBody").replaceChildren(back, grid);
 }
 
 async function goTo(bookId, chapter, verse) {
   nav.book = bookId; nav.chapter = chapter;
   Store.setLast(bookId, chapter);
+  $$(".sheet").forEach((s) => (s.hidden = true));
   showView("read");
   await renderReader(verse);
 }
 
-/* ---------------------------------------------------------------
-   Vista Leer
---------------------------------------------------------------- */
+/* ------------------------------- Leer ------------------------------- */
 async function renderReader(scrollVerse) {
   const view = $("#view-read");
   const b = await bookById(nav.book);
   $("#refLabel").textContent = `${b.name} ${nav.chapter}`;
-  // el botón interlineal sólo tiene sentido en el AT
-  $("#btnInterlinear").style.opacity = b.hasHebrew ? "1" : ".4";
-
   view.replaceChildren(loadingEl());
   try {
     const es = await Data.es(nav.book);
     const verses = es.chapters[nav.chapter - 1] || [];
     const frag = document.createDocumentFragment();
 
-    if (nav.book === Store.get("last").book) frag.appendChild(await dailyCard());
+    if (!Store.get("seenTip")) frag.appendChild(tipCard());
+    if (nav.book === Store.get("last").book && nav.chapter === Store.get("last").chapter)
+      frag.appendChild(await dailyCard());
     frag.appendChild(el("h2", "chapter-title", `${b.name} ${nav.chapter}`));
 
-    const interlinear = Store.get("interlinear") && b.hasHebrew;
-    let heb = null;
-    if (interlinear) {
-      try { heb = await Data.hebrew(nav.book); } catch (e) { heb = null; }
-    }
-
     verses.forEach((text, i) => {
-      const n = i + 1;
-      if (interlinear && heb) {
-        frag.appendChild(interlinearVerse(n, text, (heb.chapters[nav.chapter - 1] || [])[i] || []));
-      } else {
-        const p = el("p", "verse");
-        p.id = `v${n}`;
-        p.innerHTML = `<span class="verse__n">${n}</span>${esc(text)}`;
-        frag.appendChild(p);
-      }
+      frag.appendChild(verseEl(b, nav.chapter, i + 1, text));
     });
-    frag.appendChild(chapterPager(b));
+    frag.appendChild(pager(b));
     view.replaceChildren(frag);
 
     if (scrollVerse) {
-      const t = $(`#v${scrollVerse}`) || $(`#iln${scrollVerse}`);
-      if (t) { t.classList.add("is-hl"); t.scrollIntoView({ block: "center" }); }
+      const t = $(`#v${scrollVerse}`);
+      if (t) { t.classList.add("flash"); t.scrollIntoView({ block: "center" }); }
     }
-  } catch (e) {
-    view.replaceChildren(errorEl(e));
-  }
+  } catch (e) { view.replaceChildren(errorEl(e)); }
 }
 
-function interlinearVerse(n, es, words) {
-  const box = el("div", "iln"); box.id = `iln${n}`;
-  box.appendChild(el("div", "iln__es", `<span class="verse__n">${n}</span>${esc(es)}`));
-  const row = el("div", "iln__heb");
-  words.forEach((w) => {
-    if (!w.h) return;
-    const code = w.s ? "H" + w.s : null;
-    const btn = el("button", "hw");
-    btn.innerHTML = `<span class="hw__h">${esc(w.h)}</span>` +
-      (code && Store.get("showStrongs") ? `<span class="hw__s">${code}</span>` : "");
-    if (code) btn.onclick = () => openWord(code, w.sa ? "H" + w.sa : null);
-    row.appendChild(btn);
-  });
-  box.appendChild(row);
-  return box;
+function verseEl(b, c, v, text) {
+  const ref = `${b.id}:${c}:${v}`;
+  const p = el("p", "verse"); p.id = `v${v}`; p.dataset.ref = ref;
+  const color = Store.getHighlight(ref);
+  if (color) p.classList.add("hl-" + color);
+  const star = Store.isFavorite(ref) ? '<span class="verse__fav">★</span>' : "";
+  p.innerHTML = `<span class="verse__n">${v}</span>${esc(text)}${star}`;
+  p.onclick = () => openVerse(b, c, v, text);
+  return p;
 }
 
-function chapterPager(b) {
-  const wrap = el("div", "row");
-  wrap.style.marginTop = "1.2rem";
-  const prev = el("button", "iconbtn", "‹ Anterior");
-  const next = el("button", "iconbtn", "Siguiente ›");
-  prev.style.minWidth = next.style.minWidth = "auto";
-  prev.style.padding = next.style.padding = ".5rem .9rem";
+function pager(b) {
+  const wrap = el("div", "pager");
+  const prev = el("button", null, "‹ Anterior");
+  const next = el("button", null, "Siguiente ›");
   prev.disabled = nav.chapter <= 1;
   next.disabled = nav.chapter >= b.chapters;
   prev.onclick = () => goTo(b.id, nav.chapter - 1);
@@ -199,29 +162,170 @@ function chapterPager(b) {
   return wrap;
 }
 
-function toggleInterlinear() {
-  const v = !Store.get("interlinear");
-  Store.set("interlinear", v);
-  $("#btnInterlinear").setAttribute("aria-pressed", String(v));
-  bookById(nav.book).then((b) => {
-    if (v && !b.hasHebrew) toast("El interlineal griego del NT llegará pronto 🙂");
-    renderReader();
-  });
+function tipCard() {
+  const t = el("div", "tip",
+    "<span>💡</span><span>Toca cualquier versículo para <b>resaltarlo con colores</b>, guardarlo en <b>favoritos</b>, verlo en <b>hebreo</b> o <b>compararlo</b>.</span>");
+  const x = el("button", null, "✕");
+  x.onclick = () => { Store.set("seenTip", true); t.remove(); };
+  t.appendChild(x);
+  return t;
 }
 
-/* ---------------------------------------------------------------
-   Estudio de palabra (diccionario Strong + concordancia)
---------------------------------------------------------------- */
+/* ------------------- Menú de acciones del versículo ------------------- */
+function openVerse(b, c, v, text) {
+  const ref = `${b.id}:${c}:${v}`;
+  $("#verseHead").innerHTML = `<strong>${esc(b.name)} ${c}:${v}</strong><p>${esc(text)}</p>`;
+
+  // franja de colores
+  const sw = $("#swatches"); sw.replaceChildren();
+  const cur = Store.getHighlight(ref);
+  COLORS.forEach((col) => {
+    const s = el("button", "swatch" + (cur === col ? " sel" : ""));
+    s.dataset.c = col;
+    s.setAttribute("aria-label", "Resaltar " + col);
+    s.onclick = () => setColor(ref, cur === col ? null : col, b, c, v, text);
+    sw.appendChild(s);
+  });
+  const none = el("button", "swatch swatch--none" + (!cur ? " sel" : ""), "✕");
+  none.setAttribute("aria-label", "Quitar resaltado");
+  none.onclick = () => setColor(ref, null, b, c, v, text);
+  sw.appendChild(none);
+
+  // acciones
+  const acts = $("#verseActions"); acts.replaceChildren();
+  const fav = Store.isFavorite(ref);
+  acts.appendChild(actionBtn(fav ? "★" : "☆", fav ? "En favoritos" : "Favorito", fav ? "on" : "", () => {
+    const now = Store.toggleFavorite(ref);
+    updateVerseDom(ref); updateMarksBadge();
+    openVerse(b, c, v, text); // refresca el menú
+    toast(now ? "Guardado en favoritos ⭐" : "Quitado de favoritos");
+  }));
+  acts.appendChild(actionBtn("📋", "Copiar", "", () => copyVerse(`${b.name} ${c}:${v}`, text)));
+  if (b.hasHebrew)
+    acts.appendChild(actionBtn("עב", "Ver en hebreo", "", () => { $("#verse").hidden = true; openHebrew(b, c, v, text); }));
+  acts.appendChild(actionBtn("⇄", "Comparar", b.hasHebrew ? "" : "action--wide", () => { $("#verse").hidden = true; openCompare(b, c, v); }));
+
+  $("#verse").hidden = false;
+}
+function actionBtn(icon, label, extra, fn) {
+  const b = el("button", "action " + extra);
+  b.innerHTML = `<span class="action__i">${icon}</span><span>${label}</span>`;
+  b.onclick = fn;
+  return b;
+}
+
+function setColor(ref, color, b, c, v, text) {
+  Store.setHighlight(ref, color);
+  updateVerseDom(ref);
+  updateMarksBadge();
+  openVerse(b, c, v, text); // refresca el estado de la franja
+  toast(color ? "Resaltado ✓" : "Resaltado quitado");
+}
+
+// actualiza en el acto el versículo visible (sin recargar el capítulo)
+function updateVerseDom(ref) {
+  const [, , v] = ref.split(":");
+  const p = $(`#v${v}`);
+  if (!p || p.dataset.ref !== ref) return;
+  COLORS.forEach((c) => p.classList.remove("hl-" + c));
+  const col = Store.getHighlight(ref);
+  if (col) p.classList.add("hl-" + col);
+  const base = p.innerHTML.replace(/<span class="verse__fav">★<\/span>$/, "");
+  p.innerHTML = Store.isFavorite(ref) ? base + '<span class="verse__fav">★</span>' : base;
+}
+
+async function copyVerse(label, text) {
+  const payload = `"${text}"\n— ${label} (RV1909)`;
+  try { await navigator.clipboard.writeText(payload); toast("Versículo copiado ✓"); }
+  catch (e) { toast("No se pudo copiar en este navegador"); }
+}
+
+/* -------------------- Hebreo de un versículo (panel) -------------------- */
+async function openHebrew(b, c, v, esText) {
+  $("#panelTitle").textContent = `${b.name} ${c}:${v} — Hebreo`;
+  const body = $("#panelBody"); body.replaceChildren(loadingEl());
+  $("#panel").hidden = false;
+  try {
+    const heb = await Data.hebrew(b.id);
+    const words = (heb.chapters[c - 1] || [])[v - 1] || [];
+    const frag = document.createDocumentFragment();
+    frag.appendChild(el("div", "iln__es", esc(esText)));
+    const row = el("div", "iln__heb");
+    words.forEach((w) => {
+      if (!w.h) return;
+      const code = w.s ? "H" + w.s : null;
+      const btn = el("button", "hw");
+      btn.innerHTML = `<span class="hw__h">${esc(w.h)}</span>` + (code ? `<span class="hw__s">${code}</span>` : "");
+      if (code) btn.onclick = () => openWord(code, w.sa ? "H" + w.sa : null);
+      row.appendChild(btn);
+    });
+    frag.appendChild(row);
+    frag.appendChild(el("p", "iln__hint", "👆 Toca una palabra hebrea para ver su significado"));
+    body.replaceChildren(frag);
+  } catch (e) { body.replaceChildren(errorEl(e)); }
+}
+
+/* -------------------- Comparar un versículo (panel) -------------------- */
+async function openCompare(b, c, v) {
+  $("#panelTitle").textContent = `${b.name} ${c}:${v} — Comparar`;
+  const body = $("#panelBody"); body.replaceChildren(loadingEl());
+  $("#panel").hidden = false;
+  await drawCompare(b, c, v);
+}
+async function drawCompare(b, c, v) {
+  const body = $("#panelBody");
+  try {
+    const vers = await Data.versions();
+    const picks = Store.get("compare");
+    const frag = document.createDocumentFragment();
+
+    for (const id of picks) {
+      const meta = vers.find((x) => x.id === id) || { name: id, lang: "" };
+      const row = el("div", "cmp-row");
+      row.appendChild(el("div", "cmp-row__h", `${esc(meta.name)} <small>${esc(meta.lang)}</small>`));
+      let txt = "—";
+      try {
+        const arr = await Data.versionFile(meta.file || `json/${id}.json`);
+        txt = (arr[b.n - 1] && arr[b.n - 1].chapters[c - 1] && arr[b.n - 1].chapters[c - 1][v - 1]) || "—";
+      } catch (e) { txt = "(no disponible)"; }
+      row.appendChild(el("div", "cmp-row__t", esc(txt)));
+      frag.appendChild(row);
+    }
+
+    // selector compacto
+    const det = el("details", "cmp-add");
+    det.appendChild(el("summary", null, "➕ Añadir o quitar versiones"));
+    const pick = el("div", "cmp-pick");
+    vers.forEach((o) => {
+      const on = picks.includes(o.id);
+      const p = el("button", "pill" + (on ? " is-active" : ""), `${o.name}`);
+      p.onclick = () => {
+        let arr = Store.get("compare").slice();
+        if (arr.includes(o.id)) arr = arr.filter((x) => x !== o.id);
+        else if (arr.length < 4) arr.push(o.id);
+        else { toast("Máximo 4 versiones"); return; }
+        Store.set("compare", arr);
+        det.open = true; drawCompare(b, c, v);
+      };
+      pick.appendChild(p);
+    });
+    det.appendChild(pick);
+    frag.appendChild(det);
+
+    body.replaceChildren(frag);
+  } catch (e) { body.replaceChildren(errorEl(e)); }
+}
+
+/* --------------- Estudio de palabra (diccionario Strong) --------------- */
 async function openWord(code, augmented) {
-  const sheet = $("#word");
   const body = $("#wordBody");
-  sheet.hidden = false;
+  $("#word").hidden = false;
   body.replaceChildren(loadingEl());
   try {
     const dict = await Data.strongsHe();
     const entry = dict[code] || (augmented && dict[augmented]) || null;
-    const es = await Data.strongsHeEs().catch(() => ({}));
-    const defEs = es[code] || (augmented && es[augmented]) || null;
+    const esMap = await Data.strongsHeEs().catch(() => ({}));
+    const defEs = esMap[code] || (augmented && esMap[augmented]) || null;
     const conc = await Data.concordanceHe();
     const occ = conc[code] || (augmented && conc[augmented]) || { n: 0, refs: [] };
 
@@ -230,150 +334,122 @@ async function openWord(code, augmented) {
     head.innerHTML =
       `<div class="wh__h">${entry ? esc(entry.lemma) : "—"}</div>` +
       `<div class="wh__x">${entry ? esc(entry.xlit) : ""} ${entry && entry.pron ? "· <i>" + esc(entry.pron) + "</i>" : ""}</div>` +
-      `<span class="wh__code">${code}${augmented && augmented !== code ? " (" + augmented + ")" : ""}</span>`;
+      `<span class="wh__code">${code}</span>`;
     frag.appendChild(head);
 
-    if (defEs) {
-      frag.appendChild(wsec("Significado (español)", esc(defEs)));
-    }
+    if (defEs) frag.appendChild(wsec("Significado", esc(defEs), "wsec--es"));
     if (entry) {
-      frag.appendChild(wsec(defEs ? "Definición ampliada (Strong, inglés)" : "Definición (Strong, inglés)",
-        esc(entry.def || entry.kjv || "—")));
+      frag.appendChild(wsec(defEs ? "Definición ampliada (Strong, inglés)" : "Definición (Strong, inglés)", esc(entry.def || entry.kjv || "—")));
       if (entry.deriv) frag.appendChild(wsec("Origen", esc(entry.deriv)));
-      if (entry.kjv && entry.kjv !== entry.def)
-        frag.appendChild(wsec("Traducido como (KJV)", esc(entry.kjv)));
-      if (!defEs)
-        frag.appendChild(el("p", "muted", "ℹ️ El significado en español está disponible para los ~1000 términos más frecuentes; esta palabra es menos común y por ahora se muestra el Strong en inglés."));
-    } else {
-      frag.appendChild(el("p", "muted", "No hay entrada de diccionario para esta palabra."));
     }
 
     const occSec = el("div", "wsec");
-    occSec.appendChild(el("h4", null, `Apariciones en el AT — ${occ.n}`));
+    occSec.appendChild(el("h4", null, `Aparece ${occ.n} ${occ.n === 1 ? "vez" : "veces"} en el AT`));
     const list = el("div", "occ");
-    for (const ref of occ.refs.slice(0, 80)) {
-      const [bn, c, v] = ref.split(".").map(Number);
-      const bk = await bookByNum(bn);
-      if (!bk) continue;
+    for (const r of occ.refs.slice(0, 60)) {
+      const [bn, c, v] = r.split(".").map(Number);
+      const bk = await bookByNum(bn); if (!bk) continue;
       const btn = el("button", null, `${bk.name} ${c}:${v}`);
-      btn.onclick = () => { closeSheets(); goTo(bk.id, c, v); };
+      btn.onclick = () => { $$(".sheet").forEach((s) => (s.hidden = true)); goTo(bk.id, c, v); };
       list.appendChild(btn);
     }
     occSec.appendChild(list);
-    if (occ.n > 80) occSec.appendChild(el("p", "muted", `…y ${occ.n - 80} más.`));
+    if (occ.n > 60) occSec.appendChild(el("p", "muted", `…y ${occ.n - 60} más.`));
     frag.appendChild(occSec);
-
     body.replaceChildren(frag);
-  } catch (e) {
-    body.replaceChildren(errorEl(e));
-  }
+  } catch (e) { body.replaceChildren(errorEl(e)); }
 }
-function wsec(title, html) {
-  const s = el("div", "wsec");
+function wsec(title, html, extra) {
+  const s = el("div", "wsec " + (extra || ""));
   s.appendChild(el("h4", null, title));
   s.appendChild(el("p", null, html));
   return s;
 }
 
-/* ---------------------------------------------------------------
-   Comparar versiones
---------------------------------------------------------------- */
-async function renderCompare() {
-  const view = $("#view-compare");
-  view.replaceChildren(loadingEl());
-  try {
-    const b = await bookById(nav.book);
-    const vers = await Data.versions();
-    const picks = Store.get("compare");
-
-    const head = el("div");
-    head.appendChild(el("p", "muted", `${b.name} ${nav.chapter} — elige versiones (toca para añadir o quitar):`));
-    const pick = el("div", "cmp-pick");
-    const options = [...vers];
-    if (b.hasHebrew) options.unshift({ id: "he_wlc", name: "Hebreo (WLC)", lang: "Hebreo" });
-    options.forEach((o) => {
-      const on = picks.includes(o.id);
-      const btn = el("button", "pill" + (on ? " is-active" : ""), `${o.name}`);
-      btn.onclick = () => {
-        let p = Store.get("compare").slice();
-        if (p.includes(o.id)) p = p.filter((x) => x !== o.id);
-        else if (p.length < 4) p.push(o.id);
-        else { toast("Máximo 4 versiones a la vez"); return; }
-        Store.set("compare", p);
-        renderCompare();
-      };
-      pick.appendChild(btn);
-    });
-    head.appendChild(pick);
-
-    const grid = el("div", "cmp-grid" + (picks.length === 2 ? " two" : ""));
-    for (const id of picks) {
-      const col = el("div", "cmp-col");
-      const meta = id === "he_wlc"
-        ? { name: "Hebreo (WLC)", lang: "Hebreo" }
-        : vers.find((v) => v.id === id) || { name: id, lang: "" };
-      col.appendChild(el("div", "cmp-col__h", `${esc(meta.name)} <small>${esc(meta.lang)}</small>`));
-      const bdy = el("div", "cmp-col__b");
-      bdy.appendChild(await versionVerses(id, b));
-      col.appendChild(bdy);
-      grid.appendChild(col);
-    }
-    view.replaceChildren(head, grid);
-  } catch (e) {
-    view.replaceChildren(errorEl(e));
-  }
-}
-
-async function versionVerses(id, b) {
-  const frag = document.createDocumentFragment();
-  if (id === "he_wlc") {
-    const heb = await Data.hebrew(b.id);
-    const vs = heb.chapters[nav.chapter - 1] || [];
-    vs.forEach((words, i) => {
-      const line = words.map((w) => w.h).join(" ");
-      const p = el("p", "cmp-v rtl");
-      p.innerHTML = `${esc(line)}`;
-      frag.appendChild(p);
-    });
-    return frag;
-  }
-  const meta = (await Data.versions()).find((v) => v.id === id);
-  const file = meta ? meta.file : `json/${id}.json`;
-  const arr = await Data.versionFile(file);
-  const vs = (arr[b.n - 1] && arr[b.n - 1].chapters[nav.chapter - 1]) || [];
-  vs.forEach((text, i) => {
-    const p = el("p", "cmp-v");
-    p.innerHTML = `<span class="verse__n">${i + 1}</span>${esc(text)}`;
-    frag.appendChild(p);
+/* ------------------------------ Mis marcas ------------------------------ */
+let marksTab = "favoritos";
+function renderMarks() {
+  const view = $("#view-marks");
+  const head = el("div"); head.style.marginBottom = "1rem";
+  const seg = el("div", "seg");
+  [["favoritos", "⭐ Favoritos"], ["resaltados", "🎨 Resaltados"]].forEach(([k, lbl]) => {
+    const btn = el("button", marksTab === k ? "is-active" : null, lbl);
+    btn.onclick = () => { marksTab = k; renderMarks(); };
+    seg.appendChild(btn);
   });
-  return frag;
+  head.appendChild(seg);
+  const list = el("div"); list.id = "marksList";
+  list.appendChild(loadingEl());
+  view.replaceChildren(head, list);
+  fillMarks();
+}
+async function fillMarks() {
+  const list = $("#marksList");
+  const refs = marksTab === "favoritos"
+    ? Store.favorites()
+    : Object.keys(Store.highlights());
+  if (!refs.length) {
+    list.replaceChildren(el("div", "empty",
+      `<span class="empty__i">${marksTab === "favoritos" ? "⭐" : "🎨"}</span>` +
+      `Aún no tienes ${marksTab}.<br>Toca un versículo mientras lees para ${marksTab === "favoritos" ? "guardarlo" : "resaltarlo"}.`));
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  for (const ref of refs) {
+    const [bid, c, v] = ref.split(":");
+    const b = BOOKS.find((x) => x.id === bid); if (!b) continue;
+    let text = "";
+    try { const es = await Data.es(bid); text = es.chapters[c - 1][v - 1] || ""; } catch (e) {}
+    const item = el("div", "mark");
+    const color = Store.getHighlight(ref);
+    if (marksTab === "resaltados" && color) {
+      const dot = el("span", "mark__dot"); dot.style.background = swatchColor(color); item.appendChild(dot);
+    } else {
+      item.appendChild(el("span", "mark__dot", "")); item.lastChild.style.background = "var(--gold)";
+    }
+    const bd = el("div", "mark__body",
+      `<div class="mark__ref">${esc(b.name)} ${c}:${v}</div><div class="mark__t">${esc(text)}</div>`);
+    bd.onclick = () => goTo(bid, +c, +v);
+    const x = el("button", "mark__x", "✕");
+    x.onclick = (e) => {
+      e.stopPropagation();
+      if (marksTab === "favoritos") Store.toggleFavorite(ref); else Store.setHighlight(ref, null);
+      updateMarksBadge(); fillMarks();
+    };
+    item.append(bd, x);
+    frag.appendChild(item);
+  }
+  list.replaceChildren(frag);
+}
+function swatchColor(c) {
+  return { amarillo: "#facc15", verde: "#4ade80", azul: "#60a5fa", rosa: "#f472b6", naranja: "#fb923c" }[c] || "#facc15";
+}
+function updateMarksBadge() {
+  const tab = $('.tab[data-view="marks"]');
+  let badge = tab.querySelector(".tab__badge");
+  const n = Store.marksCount();
+  if (!n) { if (badge) badge.remove(); return; }
+  if (!badge) { badge = el("span", "tab__badge"); tab.appendChild(badge); }
+  badge.textContent = n > 99 ? "99+" : n;
 }
 
-/* ---------------------------------------------------------------
-   Buscar (en el texto en español)
---------------------------------------------------------------- */
+/* ------------------------------- Buscar ------------------------------- */
 let searchReady = false;
 function renderSearch() {
   const view = $("#view-search");
   if (searchReady) return;
   const box = el("div", "search-box");
-  const input = el("input");
-  input.type = "search";
-  input.placeholder = "Buscar palabra o frase…";
-  input.id = "searchInput";
-  const btn = el("button", "iconbtn", "Buscar");
-  btn.style.minWidth = "auto"; btn.style.padding = ".5rem 1rem";
+  const input = el("input"); input.type = "search"; input.placeholder = "Buscar palabra o frase…"; input.id = "searchInput";
+  const btn = el("button", "iconbtn", "Buscar"); btn.style.minWidth = "auto"; btn.style.padding = ".6rem 1rem";
   box.append(input, btn);
   const results = el("div"); results.id = "searchResults";
-  results.appendChild(el("p", "muted", "Escribe al menos 3 letras y pulsa Buscar. Se busca en la Reina Valera 1909."));
+  results.appendChild(el("p", "muted", "Escribe al menos 3 letras. Se busca en la Reina Valera 1909."));
   view.replaceChildren(box, results);
-
   const run = () => doSearch(input.value.trim());
   btn.onclick = run;
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
   searchReady = true;
 }
-
 async function doSearch(q) {
   const results = $("#searchResults");
   if (q.length < 3) { results.replaceChildren(el("p", "muted", "Escribe al menos 3 letras.")); return; }
@@ -383,15 +459,11 @@ async function doSearch(q) {
     const nq = norm(q);
     const out = [];
     for (let bi = 0; bi < arr.length && out.length < 300; bi++) {
-      const bk = BOOKS[bi];
-      const chapters = arr[bi].chapters;
+      const bk = BOOKS[bi]; const chapters = arr[bi].chapters;
       for (let ci = 0; ci < chapters.length; ci++) {
         const vs = chapters[ci];
         for (let vi = 0; vi < vs.length; vi++) {
-          if (norm(vs[vi]).includes(nq)) {
-            out.push({ bk, c: ci + 1, v: vi + 1, t: vs[vi] });
-            if (out.length >= 300) break;
-          }
+          if (norm(vs[vi]).includes(nq)) { out.push({ bk, c: ci + 1, v: vi + 1, t: vs[vi] }); if (out.length >= 300) break; }
         }
         if (out.length >= 300) break;
       }
@@ -401,26 +473,20 @@ async function doSearch(q) {
     const re = new RegExp("(" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig");
     out.forEach((r) => {
       const d = el("div", "result");
-      const hl = esc(r.t).replace(re, "<mark>$1</mark>");
-      d.innerHTML = `<div class="result__ref">${esc(r.bk.name)} ${r.c}:${r.v}</div><div class="result__t">${hl}</div>`;
+      d.innerHTML = `<div class="result__ref">${esc(r.bk.name)} ${r.c}:${r.v}</div><div class="result__t">${esc(r.t).replace(re, "<mark>$1</mark>")}</div>`;
       d.onclick = () => goTo(r.bk.id, r.c, r.v);
       frag.appendChild(d);
     });
     results.replaceChildren(frag);
-  } catch (e) {
-    results.replaceChildren(errorEl(e));
-  }
+  } catch (e) { results.replaceChildren(errorEl(e)); }
 }
 
-/* ---------------------------------------------------------------
-   Ajustes
---------------------------------------------------------------- */
+/* ------------------------------- Ajustes ------------------------------- */
 function renderSettings() {
   const view = $("#view-settings");
   const s = Store.all();
   const frag = document.createDocumentFragment();
 
-  // Tema
   const c1 = el("div", "card"); c1.appendChild(el("h3", null, "Apariencia"));
   const rTheme = el("div", "row", "<span>Tema</span>");
   const segT = el("div", "seg");
@@ -430,14 +496,13 @@ function renderSettings() {
     segT.appendChild(b);
   });
   rTheme.appendChild(segT); c1.appendChild(rTheme);
-
   const rFont = el("div", "row", "<span>Tamaño de letra</span>");
   const segF = el("div", "seg");
   [["A−", -0.08], ["A", "reset"], ["A+", 0.08]].forEach(([lbl, d]) => {
     const b = el("button", null, lbl);
     b.onclick = () => {
       let fs = Store.get("fontSize");
-      fs = d === "reset" ? 1.12 : Math.min(1.6, Math.max(0.9, fs + d));
+      fs = d === "reset" ? 1.14 : Math.min(1.7, Math.max(0.9, fs + d));
       Store.set("fontSize", fs);
       document.documentElement.style.setProperty("--fs-read", fs + "rem");
     };
@@ -446,77 +511,48 @@ function renderSettings() {
   rFont.appendChild(segF); c1.appendChild(rFont);
   frag.appendChild(c1);
 
-  // Interlineal
-  const c2 = el("div", "card"); c2.appendChild(el("h3", null, "Estudio del hebreo"));
-  c2.appendChild(toggleRow("Mostrar número de Strong", "showStrongs", () => { if (nav) renderReader(); }));
-  c2.appendChild(el("p", "muted", "En el Antiguo Testamento, activa el botón עב (arriba) para ver el hebreo palabra por palabra y tócalo para estudiar cada término."));
-  frag.appendChild(c2);
-
-  // Acerca de
-  const c3 = el("div", "card"); c3.appendChild(el("h3", null, "Acerca de"));
+  const c3 = el("div", "card"); c3.appendChild(el("h3", null, "Cómo usar la app"));
   c3.appendChild(el("p", "muted",
-    "<b>Texto español:</b> Reina Valera 1909 (dominio público). La RV1960 tiene derechos de autor; " +
-    "se podrá añadir en el futuro con licencia.<br><br>" +
-    "<b>Hebreo:</b> Códice de Leningrado / OpenScriptures (CC BY 4.0), con morfología y números de Strong.<br>" +
-    "<b>Diccionarios:</b> Concordancia Strong (dominio público).<br><br>" +
-    "Hecho para aprender la Palabra de forma profunda y sencilla."));
+    "📖 <b>Lee</b> y <b>toca cualquier versículo</b> para abrir su menú: resaltar con colores, favorito, ver en hebreo o comparar.<br><br>" +
+    "⭐ En <b>Mis marcas</b> encuentras todo lo que guardaste.<br>" +
+    "עב En el Antiguo Testamento, <b>Ver en hebreo</b> te muestra cada palabra con su significado."));
   frag.appendChild(c3);
 
+  const c4 = el("div", "card"); c4.appendChild(el("h3", null, "Acerca de"));
+  c4.appendChild(el("p", "muted",
+    "<b>Texto:</b> Reina Valera 1909 (dominio público). La RV1960 tiene derechos de autor.<br>" +
+    "<b>Hebreo:</b> Códice de Leningrado / OpenScriptures (CC BY 4.0).<br>" +
+    "<b>Significados:</b> ~1000 términos hebreos traducidos al español + Concordancia Strong.<br><br>" +
+    "Hecho para aprender la Palabra de forma profunda y sencilla."));
+  frag.appendChild(c4);
   view.replaceChildren(frag);
 }
-function toggleRow(label, key, after) {
-  const row = el("div", "row", `<span>${label}</span>`);
-  const seg = el("div", "seg");
-  [["Sí", true], ["No", false]].forEach(([lbl, val]) => {
-    const b = el("button", Store.get(key) === val ? "is-active" : null, lbl);
-    b.onclick = () => { Store.set(key, val); if (after) after(); renderSettings(); };
-    seg.appendChild(b);
-  });
-  row.appendChild(seg);
-  return row;
-}
 
-/* ---------------------------------------------------------------
-   Versículo del día
---------------------------------------------------------------- */
+/* ---------------------------- Versículo del día ---------------------------- */
 async function dailyCard() {
   const day = Math.floor(Date.now() / 864e5);
   const [bookId, c, v] = DAILY[day % DAILY.length];
   const card = el("div", "daily");
   try {
-    const b = await bookById(bookId);
-    if (!b) return el("span");
+    const b = await bookById(bookId); if (!b) return el("span");
     const es = await Data.es(bookId);
     const text = es.chapters[c - 1][v - 1];
     card.innerHTML = `<small>Versículo del día</small><p>"${esc(text)}"</p><small>${esc(b.name)} ${c}:${v}</small>`;
-    card.style.cursor = "pointer";
     card.onclick = () => goTo(bookId, c, v);
   } catch (e) { return el("span"); }
   return card;
 }
 
-/* ---------------------------------------------------------------
-   Utilidades UI
---------------------------------------------------------------- */
+/* ------------------------------ Utilidades ------------------------------ */
 function loadingEl() { return el("div", "loading", '<span class="spin"></span>'); }
-function errorEl(e) {
-  console.error(e);
-  return el("div", "loading", "⚠️ " + esc(e.message || "Error al cargar."));
-}
-function closeSheets() { $$(".sheet").forEach((s) => (s.hidden = true)); }
+function errorEl(e) { console.error(e); return el("div", "loading", "⚠️ " + esc(e.message || "Error al cargar.")); }
 let toastT;
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2200);
+  clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2000);
 }
-
-/* ---------------------------------------------------------------
-   Service worker (offline)
---------------------------------------------------------------- */
 function registerSW() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  }
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
 init();

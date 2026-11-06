@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1b4332" />
-  <meta name="description" content="Estudia la Biblia de forma profunda y sencilla: lectura, comparación de versiones y análisis palabra por palabra del hebreo con números de Strong." />
+  <meta name="description" content="Estudia la Biblia de forma sencilla: lee, resalta con colores, guarda favoritos, compara versiones y mira el hebreo original palabra por palabra." />
   <title>Biblia de Estudio</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
@@ -18,16 +18,13 @@
       <span id="refLabel">Génesis 1</span>
       <svg viewBox="0 0 24 24" class="chev" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
-    <div class="topbar__actions">
-      <button id="btnInterlinear" class="iconbtn" title="Interlineal hebreo" aria-pressed="false">עב</button>
-      <button id="btnTheme" class="iconbtn" title="Tema">◐</button>
-    </div>
+    <button id="btnTheme" class="iconbtn" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
   </header>
 
   <!-- Vistas -->
   <main id="app">
     <section id="view-read" class="view is-active"></section>
-    <section id="view-compare" class="view"></section>
+    <section id="view-marks" class="view"></section>
     <section id="view-search" class="view"></section>
     <section id="view-settings" class="view"></section>
   </main>
@@ -35,7 +32,7 @@
   <!-- Navegación inferior -->
   <nav class="tabbar">
     <button class="tab is-active" data-view="read"><span class="tab__i">📖</span><span>Leer</span></button>
-    <button class="tab" data-view="compare"><span class="tab__i">⇄</span><span>Comparar</span></button>
+    <button class="tab" data-view="marks"><span class="tab__i">⭐</span><span>Mis marcas</span></button>
     <button class="tab" data-view="search"><span class="tab__i">🔍</span><span>Buscar</span></button>
     <button class="tab" data-view="settings"><span class="tab__i">⚙️</span><span>Ajustes</span></button>
   </nav>
@@ -44,6 +41,7 @@
   <div id="navigator" class="sheet" hidden>
     <div class="sheet__backdrop" data-close></div>
     <div class="sheet__panel" role="dialog" aria-label="Elegir libro y capítulo">
+      <div class="sheet__grip"></div>
       <div class="sheet__head">
         <strong id="navTitle">Libros</strong>
         <button class="iconbtn" data-close aria-label="Cerrar">✕</button>
@@ -56,10 +54,35 @@
     </div>
   </div>
 
+  <!-- Menú de acciones del versículo (el centro de todo) -->
+  <div id="verse" class="sheet" hidden>
+    <div class="sheet__backdrop" data-close></div>
+    <div class="sheet__panel sheet__panel--actions" role="dialog" aria-label="Acciones del versículo">
+      <div class="sheet__grip"></div>
+      <div id="verseHead" class="verse-head"></div>
+      <div class="swatches" id="swatches"></div>
+      <div class="actions" id="verseActions"></div>
+    </div>
+  </div>
+
+  <!-- Panel genérico (hebreo del versículo / comparar) -->
+  <div id="panel" class="sheet" hidden>
+    <div class="sheet__backdrop" data-close></div>
+    <div class="sheet__panel" role="dialog" aria-label="Detalle">
+      <div class="sheet__grip"></div>
+      <div class="sheet__head">
+        <strong id="panelTitle">Detalle</strong>
+        <button class="iconbtn" data-close aria-label="Cerrar">✕</button>
+      </div>
+      <div id="panelBody" class="sheet__body"></div>
+    </div>
+  </div>
+
   <!-- Estudio de palabra (diccionario Strong) -->
   <div id="word" class="sheet" hidden>
     <div class="sheet__backdrop" data-close></div>
     <div class="sheet__panel sheet__panel--word" role="dialog" aria-label="Estudio de palabra">
+      <div class="sheet__grip"></div>
       <div class="sheet__head">
         <strong>Estudio de palabra</strong>
         <button class="iconbtn" data-close aria-label="Cerrar">✕</button>
