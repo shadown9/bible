@@ -17,7 +17,13 @@ const DEFAULTS = {
   onboarded: false,       // si ya mostramos la bienvenida
   notes: {},              // "libro:cap:ver" -> { obs, int, app } notas del estudio guiado
   plans: {},              // planId -> [índices de días completados]
+  memorize: {},           // ref -> { lvl, due } (repetición espaciada)
+  streak: { last: 0, count: 0 }, // racha de práctica (día -> nº)
 };
+
+// intervalos de repaso en días según el nivel alcanzado (0..5)
+const MEM_INT = [0, 1, 3, 7, 14, 30];
+const today = () => Math.floor(Date.now() / 864e5);
 
 let state = load();
 
@@ -84,6 +90,36 @@ export const Store = {
     return (state.plans[planId] || []).includes(i);
   },
   planCount: (planId) => (state.plans[planId] || []).length,
+
+  // --- Memorización (repetición espaciada + racha) ---
+  memHas: (ref) => !!state.memorize[ref],
+  memToggle: (ref) => {
+    if (state.memorize[ref]) delete state.memorize[ref];
+    else state.memorize[ref] = { lvl: 0, due: 0 };
+    persist();
+    return !!state.memorize[ref];
+  },
+  memAll: () => Object.entries(state.memorize).map(([ref, m]) => ({ ref, lvl: m.lvl, due: m.due })),
+  memDueCount: () => {
+    const t = today();
+    return Object.values(state.memorize).filter((m) => (m.due || 0) <= t).length;
+  },
+  memBump: (ref) => {
+    const m = state.memorize[ref]; if (!m) return;
+    m.lvl = Math.min((m.lvl || 0) + 1, 5);
+    m.due = today() + MEM_INT[m.lvl];
+    persist();
+  },
+  memCount: () => Object.keys(state.memorize).length,
+  memMastered: () => Object.values(state.memorize).filter((m) => m.lvl >= 5).length,
+  streakGet: () => state.streak.count || 0,
+  streakMark: () => {
+    const t = today(), s = state.streak;
+    if (s.last === t) return s.count;
+    s.count = (s.last === t - 1) ? (s.count || 0) + 1 : 1;
+    s.last = t; persist();
+    return s.count;
+  },
 
   // --- Notas del estudio guiado ---
   getNote: (ref, key) => (state.notes[ref] && state.notes[ref][key]) || "",

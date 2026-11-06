@@ -307,6 +307,54 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
   min-width: 15px; height: 15px; border-radius: 999px; padding: 0 3px;
   display: inline-flex; align-items: center; justify-content: center; }
 
+/* ---------- Memorizar (juego + racha) ---------- */
+.mem-cta { width: 100%; display: flex; align-items: center; gap: .8rem; text-align: left;
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft)); color: var(--accent-ink);
+  border: none; border-radius: var(--radius); padding: .9rem 1rem; margin-bottom: 1.2rem; box-shadow: var(--shadow); }
+.mem-cta:active { filter: brightness(.95); }
+.mem-cta__i { font-size: 1.9rem; flex: none; }
+.mem-cta__b { flex: 1; min-width: 0; }
+.mem-cta__t { display: block; font-weight: 800; font-size: 1.05rem; }
+.mem-cta__d { display: block; font-size: .85rem; opacity: .9; }
+.mem-cta__streak { font-weight: 800; font-size: 1rem; background: rgba(255,255,255,.2); padding: .2rem .55rem; border-radius: 999px; }
+.mem-cta__go { font-size: 1.5rem; opacity: .9; }
+.mem-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin: .2rem 0 1rem; }
+.mem-stat { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: .7rem .4rem; text-align: center; }
+.mem-stat b { display: block; font-size: 1.15rem; color: var(--accent-soft); }
+.mem-stat span { font-size: .72rem; color: var(--text-soft); }
+.mem-item { display: flex; gap: .6rem; align-items: center; padding: .7rem .2rem; border-bottom: 1px solid var(--line); }
+.mem-item__b { flex: 1; min-width: 0; cursor: pointer; }
+.mem-item__r { font-weight: 700; color: var(--accent-soft); font-size: .86rem; }
+.mem-item__r small { color: var(--text-soft); font-weight: 500; }
+.mem-item__t { font-family: var(--ff-read); font-size: 1rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.mem-dots { display: flex; gap: 4px; margin-top: .3rem; }
+.mem-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.mem-dot.on { background: var(--gold); }
+/* juego */
+.mem-progress { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-soft); text-align: center; }
+.mem-ref { text-align: center; font-weight: 800; color: var(--accent-soft); font-size: 1.1rem; margin: .2rem 0 .7rem; }
+.mem-peek { font-family: var(--ff-read); font-size: 1.1rem; line-height: 1.6; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 12px; padding: .8rem; max-height: 0; overflow: hidden; opacity: 0; transition: all .25s; margin-bottom: 0; }
+.mem-peek.show { max-height: 260px; opacity: 1; padding: .8rem; margin-bottom: .7rem; }
+.mem-peekbtn { display: block; margin: 0 auto .6rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: .4rem 1rem; color: var(--accent-soft); font-weight: 600; }
+.mem-hint { text-align: center; color: var(--text-soft); font-size: .88rem; margin: .4rem 0 .5rem; }
+.mem-target { min-height: 3rem; background: var(--surface-2); border: 1px dashed var(--line); border-radius: 12px; padding: .7rem .8rem;
+  font-family: var(--ff-read); font-size: 1.15rem; line-height: 1.7; margin-bottom: .6rem; transition: background .2s; }
+.mem-target.ok { background: color-mix(in srgb, var(--accent-soft) 18%, transparent); border-style: solid; border-color: var(--accent-soft); }
+.mem-status { text-align: center; min-height: 1.4rem; font-weight: 800; color: var(--accent-soft); }
+.mem-status.win { font-size: 1.15rem; animation: pop .3s ease; }
+@keyframes pop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.mem-pool { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
+.mem-chip { font-family: var(--ff-read); font-size: 1.1rem; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: .5rem .8rem; color: var(--text); box-shadow: 0 2px 0 var(--line); }
+.mem-chip:active { transform: translateY(1px); }
+.mem-chip.used { opacity: 0; pointer-events: none; }
+.mem-chip.shake { animation: shake .4s; border-color: var(--danger); }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+.mem-done { text-align: center; padding: 2rem 1rem 1rem; }
+.mem-done__i { font-size: 3rem; }
+.mem-done h3 { margin: .4rem 0 .3rem; color: var(--accent-soft); }
+
 /* ---------- Descubre (planes y temas) ---------- */
 .disc-h { font-family: var(--ff-read); font-size: 1.35rem; color: var(--accent-soft); margin: .6rem 0 .3rem; }
 .disc-sub { color: var(--text-soft); font-size: .9rem; margin: 0 0 1rem; }

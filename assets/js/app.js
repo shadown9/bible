@@ -338,6 +338,15 @@ function openVerse(b, c, v, text) {
   paintFav();
   acts.appendChild(fav);
   acts.appendChild(actionBtn("📋", "Copiar", "", () => copyVerse(`${b.name} ${c}:${v}`, text)));
+  const mem = el("button", "action");
+  const paintMem = () => {
+    const on = Store.memHas(ref);
+    mem.className = "action" + (on ? " on" : "");
+    mem.innerHTML = `<span class="action__i">🧠</span><span>${on ? "Memorizando" : "Memorizar"}</span>`;
+  };
+  mem.onclick = () => { const on = Store.memToggle(ref); paintMem(); toast(on ? "Añadido a memorizar 🧠" : "Quitado de memorizar"); };
+  paintMem();
+  acts.appendChild(mem);
   if (b.hasHebrew || b.hasGreek)
     acts.appendChild(actionBtn(b.hasHebrew ? "עב" : "Ω", "Estudiar palabra por palabra", "action--wide", () => { $("#verse").hidden = true; openStudy(b, c, v, text); }));
 
@@ -724,7 +733,18 @@ async function renderDiscover() {
     const [plans, temas] = await Promise.all([Data.plans(), Data.temas()]);
     const frag = document.createDocumentFragment();
     frag.appendChild(el("h2", "disc-h", "Descubre"));
-    frag.appendChild(el("p", "disc-sub", "Un camino para cada día: planes de lectura y temas de la vida."));
+    frag.appendChild(el("p", "disc-sub", "Un camino para cada día: memoriza, lee y descubre."));
+
+    // Tarjeta de memorización (juego + racha)
+    const due = Store.memDueCount(), total = Store.memCount(), streak = Store.streakGet();
+    const memc = el("button", "mem-cta");
+    memc.innerHTML =
+      `<span class="mem-cta__i">🧠</span>` +
+      `<span class="mem-cta__b"><span class="mem-cta__t">Memoriza versículos</span>` +
+      `<span class="mem-cta__d">${total ? (due ? `${due} para repasar hoy` : "Al día ✓") + ` · ${total} en tu mazo` : "Un juego para grabar la Palabra"}</span></span>` +
+      (streak ? `<span class="mem-cta__streak">🔥 ${streak}</span>` : `<span class="mem-cta__go">›</span>`);
+    memc.onclick = () => openMemorize();
+    frag.appendChild(memc);
 
     frag.appendChild(el("div", "sec-h", "Planes de lectura"));
     plans.forEach((pl) => {
@@ -796,6 +816,133 @@ async function openTema(t) {
     }
     body.replaceChildren(frag);
   } catch (e) { body.replaceChildren(errorEl(e)); }
+}
+
+/* --------------------- Memorizar (juego + racha) --------------------- */
+const MEM_SUGGEST = ["juan:3:16", "salmos:23:1", "filipenses:4:13", "proverbios:3:5", "josue:1:9",
+  "romanos:8:28", "salmos:119:105", "isaias:41:10", "mateo:6:33", "juan:14:6", "filipenses:4:6", "salmos:46:1"];
+const MEM_LABEL = ["Nuevo", "Empezando", "Aprendiendo", "Avanzado", "Casi", "Dominado ✓"];
+const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function refName(ref) { const [bid, c, v] = ref.split(":"); return `${nameOf(bid)} ${c}:${v}`; }
+async function verseText(ref) { const [bid, c, v] = ref.split(":"); const e = await Data.es(bid); return (e.chapters[+c - 1] || [])[+v - 1] || ""; }
+const dayNum = () => Math.floor(Date.now() / 864e5);
+
+async function openMemorize() {
+  $("#panelTitle").textContent = "Memorizar";
+  const body = $("#panelBody"); body.replaceChildren(loadingEl());
+  $("#panel").hidden = false;
+  try {
+    const deck = Store.memAll();
+    const due = Store.memDueCount(), streak = Store.streakGet(), mastered = Store.memMastered();
+    const frag = document.createDocumentFragment();
+    const stats = el("div", "mem-stats");
+    stats.innerHTML =
+      `<div class="mem-stat"><b>🔥 ${streak}</b><span>racha (días)</span></div>` +
+      `<div class="mem-stat"><b>${due}</b><span>para repasar</span></div>` +
+      `<div class="mem-stat"><b>${mastered}/${deck.length}</b><span>dominados</span></div>`;
+    frag.appendChild(stats);
+
+    if (deck.length) {
+      const q = deck.filter((d) => (d.due || 0) <= dayNum());
+      const go = el("button", "wc-go", due ? `Practicar (${due})` : "Repasar de nuevo");
+      go.onclick = () => startPractice((q.length ? q : deck).map((d) => d.ref));
+      frag.appendChild(go);
+
+      frag.appendChild(el("div", "sec-h", "Tus versículos"));
+      for (const d of deck) {
+        let txt = ""; try { txt = await verseText(d.ref); } catch (e) {}
+        const dots = [0, 1, 2, 3, 4].map((i) => `<span class="mem-dot${i < d.lvl ? " on" : ""}"></span>`).join("");
+        const item = el("div", "mem-item");
+        const bd = el("div", "mem-item__b");
+        bd.innerHTML = `<div class="mem-item__r">${esc(refName(d.ref))} <small>· ${MEM_LABEL[d.lvl]}</small></div>` +
+          `<div class="mem-item__t">${esc(txt)}</div><div class="mem-dots">${dots}</div>`;
+        bd.onclick = () => startPractice([d.ref]);
+        const x = el("button", "mark__x", "✕");
+        x.onclick = (e) => { e.stopPropagation(); Store.memToggle(d.ref); openMemorize(); };
+        item.append(bd, x);
+        frag.appendChild(item);
+      }
+    }
+
+    frag.appendChild(el("div", "sec-h", deck.length ? "Añade más" : "Empieza con estos"));
+    frag.appendChild(el("p", "muted", "Toca para añadir a tu mazo. También puedes tocar «Memorizar» en cualquier versículo mientras lees."));
+    const sg = el("div", "cmp-pick");
+    for (const ref of MEM_SUGGEST) {
+      if (Store.memHas(ref)) continue;
+      const chip = el("button", "vchip", `＋ ${esc(refName(ref))}`);
+      chip.onclick = () => { Store.memToggle(ref); openMemorize(); };
+      sg.appendChild(chip);
+    }
+    frag.appendChild(sg);
+    body.replaceChildren(frag);
+  } catch (e) { body.replaceChildren(errorEl(e)); }
+}
+
+async function startPractice(refs) {
+  const queue = [...refs]; let i = 0;
+  const step = async () => {
+    if (i >= queue.length) return finishPractice(queue.length);
+    const ref = queue[i];
+    let text = ""; try { text = await verseText(ref); } catch (e) {}
+    const m = Store.memAll().find((x) => x.ref === ref);
+    gameCard(ref, text, m ? m.lvl : 0, i, queue.length, () => { Store.memBump(ref); i++; step(); });
+  };
+  step();
+}
+function finishPractice(n) {
+  Store.streakMark();
+  const body = $("#panelBody");
+  const d = el("div", "mem-done",
+    `<div class="mem-done__i">🎉</div><h3>¡Bien hecho!</h3>` +
+    `<p class="muted">Practicaste ${n} versículo${n === 1 ? "" : "s"}. Racha: 🔥 ${Store.streakGet()} día${Store.streakGet() === 1 ? "" : "s"}.</p>`);
+  const b = el("button", "wc-go", "Volver");
+  b.onclick = () => openMemorize();
+  body.replaceChildren(d, b);
+}
+function gameCard(ref, text, lvl, idx, total, onDone) {
+  const body = $("#panelBody");
+  const words = text.split(/\s+/).filter(Boolean);
+  let next = 0, errors = 0;
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el("div", "mem-progress", `Versículo ${idx + 1} de ${total} · ${MEM_LABEL[lvl]}`));
+  frag.appendChild(el("div", "mem-ref", refName(ref)));
+  const peek = el("div", "mem-peek" + (lvl === 0 ? " show" : ""), esc(text));
+  frag.appendChild(peek);
+  if (lvl > 0) {
+    const pb = el("button", "mem-peekbtn", "👁 Ver un momento");
+    pb.onclick = () => { peek.classList.add("show"); setTimeout(() => peek.classList.remove("show"), 1800); };
+    frag.appendChild(pb);
+  }
+  frag.appendChild(el("p", "mem-hint", "Toca las palabras en orden:"));
+  const target = el("div", "mem-target");
+  frag.appendChild(target);
+  const status = el("div", "mem-status");
+  frag.appendChild(status);
+  const pool = el("div", "mem-pool");
+  shuffle(words.map((w, i) => i)).forEach((wi) => {
+    const chip = el("button", "mem-chip", esc(words[wi]));
+    chip.onclick = () => {
+      if (wi === next) {
+        chip.classList.add("used"); chip.disabled = true;
+        target.appendChild(el("span", "mem-w", esc(words[next]) + " "));
+        next++;
+        if (next === words.length) {
+          target.classList.add("ok");
+          status.className = "mem-status win";
+          status.textContent = errors === 0 ? "✓ ¡Perfecto!" : "✓ ¡Lo lograste!";
+          pool.querySelectorAll("button").forEach((b) => (b.disabled = true));
+          setTimeout(onDone, 1100);
+        }
+      } else {
+        chip.classList.add("shake"); errors++;
+        setTimeout(() => chip.classList.remove("shake"), 420);
+      }
+    };
+    pool.appendChild(chip);
+  });
+  frag.appendChild(pool);
+  body.replaceChildren(frag);
+  body.scrollTop = 0;
 }
 
 /* ------------------------------ Mis marcas ------------------------------ */
