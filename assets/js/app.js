@@ -256,24 +256,78 @@ async function copyVerse(label, text) {
   catch (e) { toast("No se pudo copiar en este navegador"); }
 }
 
-/* --------- Estudiar un versículo palabra por palabra (panel) ---------
-   Cada palabra hebrea con su pronunciación y su SIGNIFICADO en español.
-   Esto es estudiar el original, no leerlo en otro idioma. */
+/* --------- Estudiar un versículo (panel) ---------
+   Una sola pantalla: arriba el versículo en Español · Hebreo · Inglés
+   (lo que importa, por defecto), y debajo el análisis palabra por
+   palabra con el significado de cada término hebreo en español.
+   Elegir versiones NO cierra la pantalla. */
+const LANG_ES = {
+  "Español": "Español", "Hebreo": "Hebreo", "English": "Inglés", "Arabic": "Árabe",
+  "Chinese": "Chino", "German": "Alemán", "Greek": "Griego (moderno)", "Esperanto": "Esperanto",
+  "Finnish": "Finés", "French": "Francés", "Korean": "Coreano", "Portuguese": "Portugués",
+  "Romanian": "Rumano", "Russian": "Ruso", "Vietnamese": "Vietnamita",
+};
+
 async function openStudy(b, c, v, esText) {
   $("#panelTitle").textContent = `${b.name} ${c}:${v} — Estudio`;
   const body = $("#panelBody"); body.replaceChildren(loadingEl());
   $("#panel").hidden = false;
   try {
-    const [heb, dict, esMap] = await Promise.all([
-      Data.hebrew(b.id), Data.strongsHe(), Data.strongsHeEs().catch(() => ({})),
+    const [heb, dict, esMap, vers] = await Promise.all([
+      Data.hebrew(b.id), Data.strongsHe(), Data.strongsHeEs().catch(() => ({})), Data.versions(),
     ]);
+
+    // opciones: primero español, hebreo, inglés; luego el resto
+    const core = [
+      { id: "es_rvr", name: "Reina Valera 1909", lang: "Español" },
+      { id: "he_wlc", name: "Hebreo (original)", lang: "Hebreo", rtl: true },
+      { id: "en_kjv", name: "King James", lang: "Inglés" },
+    ];
+    const rest = vers.filter((x) => x.id !== "es_rvr" && x.id !== "en_kjv")
+      .map((x) => ({ id: x.id, name: x.name, lang: LANG_ES[x.lang] || x.lang, file: x.file }));
+    const options = [...core, ...rest];
+
+    let picks = Store.get("compare").filter((id) => options.some((o) => o.id === id));
+    if (!picks.length) picks = ["es_rvr", "he_wlc", "en_kjv"];
+    Store.set("compare", picks);
+
     const words = (heb.chapters[c - 1] || [])[v - 1] || [];
     const frag = document.createDocumentFragment();
 
-    // versículo en español como referencia
-    frag.appendChild(el("div", "study-es", `<span class="verse__n">${v}</span>${esc(esText)}`));
-    frag.appendChild(el("h4", "cmp-sel-h", "Palabra por palabra · hebreo → español"));
+    // ---- bloque de comparación (idiomas) ----
+    frag.appendChild(el("h4", "cmp-sel-h", "El versículo en:"));
+    const rows = el("div"); rows.id = "cmpRows"; frag.appendChild(rows);
 
+    const det = el("details", "cmp-add");
+    det.appendChild(el("summary", null, "＋ Elegir idiomas y versiones"));
+    const sel = el("div", "cmp-pick");
+    options.forEach((o) => {
+      const chip = el("button", "vchip");
+      const paint = () => {
+        const on = Store.get("compare").includes(o.id);
+        chip.className = "vchip" + (on ? " on" : "");
+        chip.innerHTML = `<span class="vchip__c">${on ? "✓" : "＋"}</span> ${esc(o.lang)}${o.id !== "he_wlc" ? ` <small>${esc(o.name)}</small>` : ""}`;
+      };
+      chip.onclick = () => {           // NO cierra la pantalla: solo actualiza filas
+        let arr = Store.get("compare").slice();
+        if (arr.includes(o.id)) {
+          if (arr.length <= 1) { toast("Deja al menos una versión"); return; }
+          arr = arr.filter((x) => x !== o.id);
+        } else {
+          if (arr.length >= 5) { toast("Máximo 5 a la vez"); return; }
+          arr.push(o.id);
+        }
+        Store.set("compare", arr);
+        paint(); drawStudyRows(b, c, v, options);
+      };
+      paint();
+      sel.appendChild(chip);
+    });
+    det.appendChild(sel);
+    frag.appendChild(det);
+
+    // ---- palabra por palabra ----
+    frag.appendChild(el("h4", "cmp-sel-h", "Palabra por palabra · hebreo → español"));
     const list = el("div", "sw-list");
     words.forEach((w) => {
       if (!w.h) return;
@@ -297,9 +351,38 @@ async function openStudy(b, c, v, esText) {
       list.appendChild(row);
     });
     frag.appendChild(list);
-    frag.appendChild(el("p", "iln__hint", "👆 Toca una palabra para ver su significado completo y dónde más aparece en la Biblia"));
+    frag.appendChild(el("p", "iln__hint", "👆 Toca una palabra para ver todo su significado y dónde más aparece"));
+
     body.replaceChildren(frag);
+    await drawStudyRows(b, c, v, options);
   } catch (e) { body.replaceChildren(errorEl(e)); }
+}
+
+async function drawStudyRows(b, c, v, options) {
+  const rows = $("#cmpRows"); if (!rows) return;
+  rows.replaceChildren(loadingEl());
+  const picks = Store.get("compare");
+  const frag = document.createDocumentFragment();
+  for (const id of picks) {
+    const o = options.find((x) => x.id === id) || { name: id, lang: "" };
+    const row = el("div", "cmp-row");
+    // etiqueta en español, con el idioma bien visible (p.ej. HEBREO)
+    row.appendChild(el("div", "cmp-row__h", `<b>${esc(o.lang)}</b> <small>${esc(o.name || "")}</small>`));
+    let txt = "—", rtl = false;
+    try {
+      if (id === "he_wlc") {
+        const heb = await Data.hebrew(b.id);
+        const ws = (heb.chapters[c - 1] || [])[v - 1] || [];
+        txt = ws.map((w) => w.h).join(" "); rtl = true;
+      } else {
+        const arr = await Data.versionFile(o.file || `json/${id}.json`);
+        txt = (arr[b.n - 1] && arr[b.n - 1].chapters[c - 1] && arr[b.n - 1].chapters[c - 1][v - 1]) || "—";
+      }
+    } catch (e) { txt = "(no disponible)"; }
+    row.appendChild(el("div", "cmp-row__t" + (rtl ? " rtl" : ""), esc(txt)));
+    frag.appendChild(row);
+  }
+  rows.replaceChildren(frag);
 }
 
 /* --------------- Estudio de palabra (diccionario Strong) --------------- */

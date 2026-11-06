@@ -162,7 +162,11 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .cmp-row__h small { color: var(--text-soft); font-weight: 500; }
 .cmp-row__t { padding: .6rem .8rem; font-family: var(--ff-read); font-size: 1.02rem; line-height: 1.6; }
 .cmp-row__t.rtl { direction: rtl; text-align: right; font-family: var(--ff-heb); font-size: 1.4rem; color: var(--hebrew); }
-.cmp-sel-h { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-soft); margin: 1.1rem 0 .55rem; }
+.cmp-sel-h { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-soft); margin: 1.2rem 0 .55rem; }
+.cmp-add { margin: .2rem 0 .4rem; }
+.cmp-add summary { cursor: pointer; color: var(--accent-soft); font-weight: 700; padding: .55rem 0; list-style: none; font-size: .9rem; }
+.cmp-add summary::-webkit-details-marker { display: none; }
+.cmp-row__h b { color: var(--accent-soft); text-transform: uppercase; font-size: .78rem; letter-spacing: .04em; }
 .cmp-pick { display: flex; flex-wrap: wrap; gap: .45rem; padding: .1rem 0 .6rem; }
 .vchip { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px;
   padding: .5rem .85rem; font-size: .88rem; display: inline-flex; align-items: center; gap: .35rem; }

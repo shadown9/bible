@@ -10,7 +10,7 @@ const DEFAULTS = {
   theme: "auto",          // auto | light | dark
   fontSize: 1.14,         // rem del texto de lectura
   last: { book: "genesis", chapter: 1 }, // última posición
-  compare: ["es_rvr", "en_kjv"],         // versiones elegidas para comparar
+  compare: ["es_rvr", "he_wlc", "en_kjv"], // versiones por defecto: español, hebreo, inglés
   highlights: {},         // "libro:cap:ver" -> color (amarillo|verde|azul|rosa|naranja)
   favorites: [],          // ["libro:cap:ver", ...] (más reciente primero)
   seenTip: false,         // si ya mostramos el consejo inicial
@@ -21,7 +21,15 @@ let state = load();
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    if (raw) {
+      const merged = { ...DEFAULTS, ...JSON.parse(raw) };
+      // migración: quien tenía el default antiguo pasa al nuevo (español/hebreo/inglés)
+      if (Array.isArray(merged.compare) && merged.compare.length === 2 &&
+          merged.compare[0] === "es_rvr" && merged.compare[1] === "en_kjv") {
+        merged.compare = ["es_rvr", "he_wlc", "en_kjv"];
+      }
+      return merged;
+    }
   } catch (e) { /* almacenamiento no disponible */ }
   return JSON.parse(JSON.stringify(DEFAULTS));
 }
