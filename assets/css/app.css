@@ -159,6 +159,10 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .daily small { opacity: .85; text-transform: uppercase; letter-spacing: .08em; font-size: .7rem; }
 .daily p { font-family: var(--ff-read); font-size: 1.12rem; margin: .3rem 0 .2rem; }
 
+.disc-cta { width: 100%; text-align: left; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 12px; padding: .7rem .9rem; margin-bottom: 1rem; color: var(--accent-soft); font-weight: 600; font-size: .95rem; }
+.disc-cta:active { background: var(--surface); }
+
 /* paginador de capítulo */
 .pager { display: flex; justify-content: space-between; gap: .6rem; margin: 1.4rem 0 .5rem; }
 .pager button { flex: 1; background: var(--surface-2); border: 1px solid var(--line);
@@ -288,7 +292,7 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 /* ---------- Pestañas inferiores ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: color-mix(in srgb, var(--surface) 95%, transparent);
   backdrop-filter: blur(10px); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
@@ -302,6 +306,41 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
   background: var(--gold); color: #fff; font-size: .6rem; font-weight: 700;
   min-width: 15px; height: 15px; border-radius: 999px; padding: 0 3px;
   display: inline-flex; align-items: center; justify-content: center; }
+
+/* ---------- Descubre (planes y temas) ---------- */
+.disc-h { font-family: var(--ff-read); font-size: 1.35rem; color: var(--accent-soft); margin: .6rem 0 .3rem; }
+.disc-sub { color: var(--text-soft); font-size: .9rem; margin: 0 0 1rem; }
+.sec-h { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-soft); margin: 1.4rem 0 .6rem; }
+.plan-card { display: flex; gap: .8rem; align-items: center; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .8rem .9rem; margin-bottom: .7rem; cursor: pointer; text-align: left; width: 100%; }
+.plan-card:active { background: var(--surface-2); }
+.plan-card__i { font-size: 1.7rem; flex: none; }
+.plan-card__b { flex: 1; min-width: 0; }
+.plan-card__t { display: block; font-weight: 700; font-size: 1.02rem; margin-bottom: .1rem; }
+.plan-card__d { display: block; color: var(--text-soft); font-size: .86rem; line-height: 1.4; }
+.plan-prog { margin-top: .4rem; display: flex; align-items: center; gap: .5rem; }
+.plan-bar { flex: 1; height: 7px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.plan-bar > i { display: block; height: 100%; background: var(--accent-soft); }
+.plan-prog small { color: var(--accent-soft); font-weight: 700; font-size: .78rem; white-space: nowrap; }
+.tema-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.tema-card { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 14px; padding: .8rem; cursor: pointer; }
+.tema-card:active { background: var(--surface-2); }
+.tema-card__i { font-size: 1.5rem; }
+.tema-card__t { font-weight: 700; font-size: .95rem; line-height: 1.2; }
+
+/* detalle de plan (días) y tema (versículos) */
+.day-row { display: flex; align-items: center; gap: .7rem; padding: .7rem .2rem; border-bottom: 1px solid var(--line); cursor: pointer; }
+.day-check { width: 26px; height: 26px; flex: none; border-radius: 50%; border: 2px solid var(--line);
+  display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; color: transparent; background: none; }
+.day-check.done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.day-row__b { flex: 1; min-width: 0; }
+.day-row__n { font-weight: 700; font-size: .82rem; color: var(--accent-soft); }
+.day-row__r { font-family: var(--ff-read); font-size: 1rem; }
+.day-go { color: var(--text-soft); font-size: 1.1rem; }
+.tema-v { padding: .7rem .2rem; border-bottom: 1px solid var(--line); cursor: pointer; }
+.tema-v__r { font-weight: 700; color: var(--accent-soft); font-size: .85rem; }
+.tema-v__t { font-family: var(--ff-read); font-size: 1.02rem; line-height: 1.55; }
 
 /* ---------- Hojas / modales ---------- */
 .sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }

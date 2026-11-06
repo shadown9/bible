@@ -16,6 +16,7 @@ const DEFAULTS = {
   seenTip: false,         // si ya mostramos el consejo inicial
   onboarded: false,       // si ya mostramos la bienvenida
   notes: {},              // "libro:cap:ver" -> { obs, int, app } notas del estudio guiado
+  plans: {},              // planId -> [índices de días completados]
 };
 
 let state = load();
@@ -70,6 +71,19 @@ export const Store = {
   // conteo de marcas (para la pestaña)
   marksCount: () =>
     state.favorites.length + Object.keys(state.highlights).length,
+
+  // --- Planes de lectura ---
+  planDone: (planId) => (state.plans[planId] || []).slice(),
+  isPlanDay: (planId, i) => (state.plans[planId] || []).includes(i),
+  togglePlanDay: (planId, i) => {
+    const arr = state.plans[planId] || (state.plans[planId] = []);
+    const k = arr.indexOf(i);
+    if (k >= 0) arr.splice(k, 1); else arr.push(i);
+    if (!arr.length) delete state.plans[planId];
+    persist();
+    return (state.plans[planId] || []).includes(i);
+  },
+  planCount: (planId) => (state.plans[planId] || []).length,
 
   // --- Notas del estudio guiado ---
   getNote: (ref, key) => (state.notes[ref] && state.notes[ref][key]) || "",

@@ -111,6 +111,7 @@ function showView(name) {
   $$(".view").forEach((v) => v.classList.toggle("is-active", v.id === "view-" + name));
   $$(".tab").forEach((t) => t.classList.toggle("is-active", t.dataset.view === name));
   window.scrollTo({ top: 0 });
+  if (name === "discover") renderDiscover();
   if (name === "marks") renderMarks();
   if (name === "search") renderSearch();
   if (name === "settings") renderSettings();
@@ -177,8 +178,12 @@ async function renderReader(scrollVerse) {
     const frag = document.createDocumentFragment();
 
     if (!Store.get("seenTip")) frag.appendChild(tipCard());
-    if (nav.book === Store.get("last").book && nav.chapter === Store.get("last").chapter)
+    if (nav.book === Store.get("last").book && nav.chapter === Store.get("last").chapter) {
       frag.appendChild(await dailyCard());
+      const disc = el("button", "disc-cta", "🧭 Descubre planes de lectura y temas →");
+      disc.onclick = () => showView("discover");
+      frag.appendChild(disc);
+    }
     frag.appendChild(el("h2", "chapter-title", `${b.name} ${nav.chapter}`));
 
     // barra del libro: género + "Sobre este libro"
@@ -698,6 +703,99 @@ function wsec(title, html, extra) {
   s.appendChild(el("h4", null, title));
   s.appendChild(el("p", null, html));
   return s;
+}
+
+/* ------------------------------ Descubre ------------------------------ */
+function nameOf(bid) { const b = BOOKS.find((x) => x.id === bid); return b ? b.name : bid; }
+function formatDay(day) {
+  const parts = []; let i = 0;
+  while (i < day.length) {
+    const [bid, c] = day[i].split(":"); let c1 = +c, c2 = +c, j = i + 1;
+    while (j < day.length) { const [b2, cc] = day[j].split(":"); if (b2 === bid && +cc === c2 + 1) { c2 = +cc; j++; } else break; }
+    parts.push(nameOf(bid) + " " + (c1 === c2 ? c1 : c1 + "–" + c2));
+    i = j;
+  }
+  return parts.join(", ");
+}
+async function renderDiscover() {
+  const view = $("#view-discover");
+  view.replaceChildren(loadingEl());
+  try {
+    const [plans, temas] = await Promise.all([Data.plans(), Data.temas()]);
+    const frag = document.createDocumentFragment();
+    frag.appendChild(el("h2", "disc-h", "Descubre"));
+    frag.appendChild(el("p", "disc-sub", "Un camino para cada día: planes de lectura y temas de la vida."));
+
+    frag.appendChild(el("div", "sec-h", "Planes de lectura"));
+    plans.forEach((pl) => {
+      const done = Store.planCount(pl.id), total = pl.dias.length, pct = Math.round((100 * done) / total);
+      const card = el("button", "plan-card");
+      card.innerHTML =
+        `<span class="plan-card__i">${pl.icon || "📖"}</span>` +
+        `<span class="plan-card__b"><span class="plan-card__t">${esc(pl.title)}</span>` +
+        `<span class="plan-card__d">${esc(pl.desc)}</span>` +
+        (done ? `<span class="plan-prog"><span class="plan-bar"><i style="width:${pct}%"></i></span><small>${done}/${total}</small></span>` : "") +
+        `</span>`;
+      card.onclick = () => openPlan(pl);
+      frag.appendChild(card);
+    });
+
+    frag.appendChild(el("div", "sec-h", "Temas · qué dice la Biblia sobre…"));
+    const tg = el("div", "tema-grid");
+    temas.forEach((t) => {
+      const c = el("button", "tema-card");
+      c.innerHTML = `<span class="tema-card__i">${t.icon || "📖"}</span><span class="tema-card__t">${esc(t.title)}</span>`;
+      c.onclick = () => openTema(t);
+      tg.appendChild(c);
+    });
+    frag.appendChild(tg);
+    view.replaceChildren(frag);
+  } catch (e) { view.replaceChildren(errorEl(e)); }
+}
+function openPlan(pl) {
+  $("#panelTitle").textContent = pl.title;
+  const body = $("#panelBody");
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el("p", "muted", esc(pl.desc)));
+  const total = pl.dias.length;
+  const header = el("div");
+  const paintHeader = () => {
+    const done = Store.planCount(pl.id);
+    header.innerHTML = `<div class="plan-prog" style="margin:.6rem 0 1rem"><span class="plan-bar"><i style="width:${Math.round((100 * done) / total)}%"></i></span><small>${done}/${total} días</small></div>`;
+  };
+  paintHeader();
+  frag.appendChild(header);
+  pl.dias.forEach((day, i) => {
+    const row = el("div", "day-row");
+    const chk = el("button", "day-check" + (Store.isPlanDay(pl.id, i) ? " done" : ""), "✓");
+    chk.onclick = (e) => { e.stopPropagation(); const now = Store.togglePlanDay(pl.id, i); chk.classList.toggle("done", now); paintHeader(); };
+    const b = el("div", "day-row__b", `<div class="day-row__n">Día ${i + 1}</div><div class="day-row__r">${esc(formatDay(day))}</div>`);
+    const go = el("span", "day-go", "›");
+    row.append(chk, b, go);
+    row.onclick = () => { const [bid, c] = day[0].split(":"); $$(".sheet").forEach((s) => (s.hidden = true)); goTo(bid, +c); };
+    frag.appendChild(row);
+  });
+  body.replaceChildren(frag);
+  $("#panel").hidden = false;
+}
+async function openTema(t) {
+  $("#panelTitle").textContent = t.title;
+  const body = $("#panelBody"); body.replaceChildren(loadingEl());
+  $("#panel").hidden = false;
+  try {
+    const frag = document.createDocumentFragment();
+    frag.appendChild(el("p", "muted", `Lo que dice la Biblia sobre ${t.title.toLowerCase()}. Toca un versículo para leerlo y estudiarlo.`));
+    for (const r of t.verses) {
+      const [bid, c, v] = r.split(":");
+      let txt = "";
+      try { const e = await Data.es(bid); txt = e.chapters[+c - 1][+v - 1] || ""; } catch (err) {}
+      const item = el("div", "tema-v");
+      item.innerHTML = `<div class="tema-v__r">${esc(nameOf(bid))} ${c}:${v}</div><div class="tema-v__t">${esc(txt)}</div>`;
+      item.onclick = () => { $$(".sheet").forEach((s) => (s.hidden = true)); goTo(bid, +c, +v); };
+      frag.appendChild(item);
+    }
+    body.replaceChildren(frag);
+  } catch (e) { body.replaceChildren(errorEl(e)); }
 }
 
 /* ------------------------------ Mis marcas ------------------------------ */

@@ -1,0 +1,14 @@
+[
+  {"id":"amor","title":"El amor de Dios","icon":"❤️","verses":["juan:3:16","romanos:5:8","romanos:8:38","1-juan:4:9","jeremias:31:3","salmos:136:1","romanos:8:28"]},
+  {"id":"fe","title":"La fe","icon":"🙏","verses":["hebreos:11:1","hebreos:11:6","romanos:10:17","efesios:2:8","2-corintios:5:7","santiago:1:6","marcos:11:24"]},
+  {"id":"ansiedad","title":"Ansiedad y paz","icon":"🕊️","verses":["filipenses:4:6","filipenses:4:7","1-pedro:5:7","juan:14:27","isaias:26:3","mateo:11:28","salmos:55:22"]},
+  {"id":"perdon","title":"El perdón","icon":"🤝","verses":["1-juan:1:9","efesios:4:32","colosenses:3:13","mateo:6:14","salmos:103:12","miqueas:7:19","mateo:18:22"]},
+  {"id":"esperanza","title":"La esperanza","icon":"🌅","verses":["jeremias:29:11","romanos:15:13","salmos:42:11","isaias:40:31","lamentaciones:3:22","hebreos:10:23","romanos:8:28"]},
+  {"id":"fortaleza","title":"Fortaleza en la debilidad","icon":"💪","verses":["isaias:41:10","filipenses:4:13","2-corintios:12:9","salmos:46:1","josue:1:9","nehemias:8:10","isaias:40:29"]},
+  {"id":"provision","title":"Provisión y confianza","icon":"🌾","verses":["mateo:6:33","filipenses:4:19","salmos:23:1","mateo:6:26","proverbios:3:5","salmos:37:25","2-corintios:9:8"]},
+  {"id":"consuelo","title":"Consuelo en el dolor","icon":"🫂","verses":["salmos:34:18","mateo:5:4","2-corintios:1:3","salmos:23:4","apocalipsis:21:4","juan:11:25","salmos:147:3"]},
+  {"id":"gratitud","title":"La gratitud","icon":"🙌","verses":["1-tesalonicenses:5:18","salmos:100:4","salmos:107:1","colosenses:3:17","salmos:118:24","efesios:5:20","salmos:103:2"]},
+  {"id":"salvacion","title":"La salvación","icon":"✝️","verses":["juan:3:16","romanos:10:9","efesios:2:8","romanos:6:23","hechos:4:12","juan:14:6","tito:3:5"]},
+  {"id":"guia","title":"Guía para decidir","icon":"🧭","verses":["proverbios:3:5","proverbios:3:6","salmos:32:8","santiago:1:5","salmos:119:105","proverbios:16:9","isaias:30:21"]},
+  {"id":"nueva-vida","title":"Nueva vida","icon":"🌱","verses":["2-corintios:5:17","lamentaciones:3:23","isaias:43:18","filipenses:3:13","ezequiel:36:26","romanos:8:1","isaias:43:19"]}
+]
