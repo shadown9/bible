@@ -164,7 +164,7 @@ function pager(b) {
 
 function tipCard() {
   const t = el("div", "tip",
-    "<span>💡</span><span>Toca cualquier versículo para <b>resaltarlo con colores</b>, guardarlo en <b>favoritos</b>, verlo en <b>hebreo</b> o <b>compararlo</b>.</span>");
+    "<span>💡</span><span>Toca cualquier versículo para <b>resaltarlo con colores</b>, guardarlo en <b>favoritos</b> o <b>estudiarlo palabra por palabra</b> en hebreo con su significado.</span>");
   const x = el("button", null, "✕");
   x.onclick = () => { Store.set("seenTip", true); t.remove(); };
   t.appendChild(x);
@@ -220,8 +220,7 @@ function openVerse(b, c, v, text) {
   acts.appendChild(fav);
   acts.appendChild(actionBtn("📋", "Copiar", "", () => copyVerse(`${b.name} ${c}:${v}`, text)));
   if (b.hasHebrew)
-    acts.appendChild(actionBtn("עב", "Ver en hebreo", "", () => { $("#verse").hidden = true; openHebrew(b, c, v, text); }));
-  acts.appendChild(actionBtn("⇄", "Comparar", b.hasHebrew ? "" : "action--wide", () => { $("#verse").hidden = true; openCompare(b, c, v); }));
+    acts.appendChild(actionBtn("עב", "Estudiar palabra por palabra", "action--wide", () => { $("#verse").hidden = true; openStudy(b, c, v, text); }));
 
   $("#verse").hidden = false;
 }
@@ -257,107 +256,50 @@ async function copyVerse(label, text) {
   catch (e) { toast("No se pudo copiar en este navegador"); }
 }
 
-/* -------------------- Hebreo de un versículo (panel) -------------------- */
-async function openHebrew(b, c, v, esText) {
-  $("#panelTitle").textContent = `${b.name} ${c}:${v} — Hebreo`;
+/* --------- Estudiar un versículo palabra por palabra (panel) ---------
+   Cada palabra hebrea con su pronunciación y su SIGNIFICADO en español.
+   Esto es estudiar el original, no leerlo en otro idioma. */
+async function openStudy(b, c, v, esText) {
+  $("#panelTitle").textContent = `${b.name} ${c}:${v} — Estudio`;
   const body = $("#panelBody"); body.replaceChildren(loadingEl());
   $("#panel").hidden = false;
   try {
-    const heb = await Data.hebrew(b.id);
+    const [heb, dict, esMap] = await Promise.all([
+      Data.hebrew(b.id), Data.strongsHe(), Data.strongsHeEs().catch(() => ({})),
+    ]);
     const words = (heb.chapters[c - 1] || [])[v - 1] || [];
     const frag = document.createDocumentFragment();
-    frag.appendChild(el("div", "iln__es", esc(esText)));
-    const row = el("div", "iln__heb");
+
+    // versículo en español como referencia
+    frag.appendChild(el("div", "study-es", `<span class="verse__n">${v}</span>${esc(esText)}`));
+    frag.appendChild(el("h4", "cmp-sel-h", "Palabra por palabra · hebreo → español"));
+
+    const list = el("div", "sw-list");
     words.forEach((w) => {
       if (!w.h) return;
       const code = w.s ? "H" + w.s : null;
-      const btn = el("button", "hw");
-      btn.innerHTML = `<span class="hw__h">${esc(w.h)}</span>` + (code ? `<span class="hw__s">${code}</span>` : "");
-      if (code) btn.onclick = () => openWord(code, w.sa ? "H" + w.sa : null);
-      row.appendChild(btn);
+      const codeA = w.sa ? "H" + w.sa : null;
+      const entry = code ? dict[code] : null;
+      let mean = (code && esMap[code]) || (codeA && esMap[codeA]) || "";
+      let enOnly = false;
+      if (!mean && entry) { mean = entry.def || entry.kjv || ""; enOnly = true; }
+      if (mean.length > 95) mean = mean.slice(0, 95) + "…";
+      const translit = entry ? entry.xlit : "";
+      const row = el("div", "sw-word");
+      row.innerHTML =
+        `<span class="sw-word__heb">${esc(w.h)}</span>` +
+        `<span class="sw-word__mid">` +
+          (translit ? `<span class="sw-word__translit">${esc(translit)}</span>` : "") +
+          `<span class="sw-word__mean">${esc(mean || "—")}${enOnly ? ' <i class="en">(ingl.)</i>' : ""}</span>` +
+        `</span>` +
+        (code ? `<span class="sw-word__code">${code} ›</span>` : "");
+      if (code) row.onclick = () => openWord(code, codeA);
+      list.appendChild(row);
     });
-    frag.appendChild(row);
-    frag.appendChild(el("p", "iln__hint", "👆 Toca una palabra hebrea para ver su significado"));
+    frag.appendChild(list);
+    frag.appendChild(el("p", "iln__hint", "👆 Toca una palabra para ver su significado completo y dónde más aparece en la Biblia"));
     body.replaceChildren(frag);
   } catch (e) { body.replaceChildren(errorEl(e)); }
-}
-
-/* -------------------- Comparar un versículo (panel) --------------------
-   Lista de versiones SIEMPRE visible (no se colapsa), etiquetada por
-   idioma e incluyendo el hebreo original. Al tocar una versión se
-   actualizan solo las filas; la lista se queda donde está. */
-async function openCompare(b, c, v) {
-  $("#panelTitle").textContent = `${b.name} ${c}:${v} — Comparar`;
-  const body = $("#panelBody"); body.replaceChildren(loadingEl());
-  $("#panel").hidden = false;
-  try {
-    const vers = await Data.versions();
-    const options = [];
-    if (b.hasHebrew) options.push({ id: "he_wlc", name: "Hebreo (original)", lang: "Hebreo", rtl: true });
-    vers.forEach((x) => options.push(x));
-
-    // asegura al menos una versión válida elegida
-    let picks = Store.get("compare").filter((id) => options.some((o) => o.id === id));
-    if (!picks.length) picks = ["es_rvr"];
-    Store.set("compare", picks);
-
-    const wrap = el("div");
-    wrap.appendChild(el("p", "muted", "Este versículo en las versiones que elijas:"));
-    const rows = el("div"); rows.id = "cmpRows"; wrap.appendChild(rows);
-    wrap.appendChild(el("h4", "cmp-sel-h", "Toca para añadir o quitar versiones"));
-    const sel = el("div", "cmp-pick");
-    options.forEach((o) => {
-      const chip = el("button", "vchip");
-      const paint = () => {
-        const on = Store.get("compare").includes(o.id);
-        chip.className = "vchip" + (on ? " on" : "");
-        chip.innerHTML = `<span class="vchip__c">${on ? "✓" : "＋"}</span> ${esc(o.name)} <small>${esc(o.lang)}</small>`;
-      };
-      chip.onclick = () => {
-        let arr = Store.get("compare").slice();
-        if (arr.includes(o.id)) {
-          if (arr.length <= 1) { toast("Deja al menos una versión"); return; }
-          arr = arr.filter((x) => x !== o.id);
-        } else {
-          if (arr.length >= 5) { toast("Máximo 5 versiones a la vez"); return; }
-          arr.push(o.id);
-        }
-        Store.set("compare", arr);
-        paint(); drawCompareRows(b, c, v, options);
-      };
-      paint();
-      sel.appendChild(chip);
-    });
-    wrap.appendChild(sel);
-    body.replaceChildren(wrap);
-    await drawCompareRows(b, c, v, options);
-  } catch (e) { body.replaceChildren(errorEl(e)); }
-}
-
-async function drawCompareRows(b, c, v, options) {
-  const rows = $("#cmpRows"); if (!rows) return;
-  rows.replaceChildren(loadingEl());
-  const picks = Store.get("compare");
-  const frag = document.createDocumentFragment();
-  for (const id of picks) {
-    const o = options.find((x) => x.id === id) || { name: id, lang: "" };
-    const row = el("div", "cmp-row");
-    row.appendChild(el("div", "cmp-row__h", `${esc(o.name)} <small>${esc(o.lang)}</small>`));
-    let txt = "—", rtl = false;
-    try {
-      if (id === "he_wlc") {
-        const heb = await Data.hebrew(b.id);
-        const ws = (heb.chapters[c - 1] || [])[v - 1] || [];
-        txt = ws.map((w) => w.h).join(" "); rtl = true;
-      } else {
-        const arr = await Data.versionFile(o.file || `json/${id}.json`);
-        txt = (arr[b.n - 1] && arr[b.n - 1].chapters[c - 1] && arr[b.n - 1].chapters[c - 1][v - 1]) || "—";
-      }
-    } catch (e) { txt = "(no disponible)"; }
-    row.appendChild(el("div", "cmp-row__t" + (rtl ? " rtl" : ""), esc(txt)));
-    frag.appendChild(row);
-  }
-  rows.replaceChildren(frag);
 }
 
 /* --------------- Estudio de palabra (diccionario Strong) --------------- */
@@ -557,9 +499,9 @@ function renderSettings() {
 
   const c3 = el("div", "card"); c3.appendChild(el("h3", null, "Cómo usar la app"));
   c3.appendChild(el("p", "muted",
-    "📖 <b>Lee</b> y <b>toca cualquier versículo</b> para abrir su menú: resaltar con colores, favorito, ver en hebreo o comparar.<br><br>" +
-    "⭐ En <b>Mis marcas</b> encuentras todo lo que guardaste.<br>" +
-    "עב En el Antiguo Testamento, <b>Ver en hebreo</b> te muestra cada palabra con su significado."));
+    "📖 <b>Lee</b> y <b>toca cualquier versículo</b> para abrir su menú: resaltar con colores, guardar en favoritos o estudiarlo.<br><br>" +
+    "עב <b>Estudiar palabra por palabra</b> (Antiguo Testamento): ves cada palabra hebrea con su pronunciación y su significado en español; toca una palabra para ver todo su sentido y dónde más aparece.<br><br>" +
+    "⭐ En <b>Mis marcas</b> encuentras todo lo que guardaste."));
   frag.appendChild(c3);
 
   const c4 = el("div", "card"); c4.appendChild(el("h3", null, "Acerca de"));

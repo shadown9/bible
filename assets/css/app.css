@@ -140,6 +140,21 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .hw__s { font-family: var(--ff-ui); font-size: .62rem; color: var(--strong); direction: ltr; }
 .iln__hint { margin-top: .9rem; color: var(--text-soft); font-size: .85rem; text-align: center; }
 
+/* estudiar palabra por palabra (en panel) */
+.study-es { font-family: var(--ff-read); font-size: 1.08rem; line-height: 1.6; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: .7rem .85rem; }
+.sw-list { display: flex; flex-direction: column; gap: .5rem; }
+.sw-word { display: flex; align-items: center; gap: .8rem; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px; padding: .55rem .7rem; cursor: pointer; transition: background .15s; }
+.sw-word:active { background: var(--surface-2); }
+.sw-word__heb { font-family: var(--ff-heb); font-size: 2rem; color: var(--hebrew); direction: rtl;
+  min-width: 92px; text-align: center; flex: none; line-height: 1.25; }
+.sw-word__mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sw-word__translit { font-size: .8rem; color: var(--text-soft); font-style: italic; }
+.sw-word__mean { font-size: 1.02rem; color: var(--text); line-height: 1.35; }
+.sw-word__mean .en { color: var(--text-soft); font-size: .8rem; }
+.sw-word__code { font-size: .72rem; font-weight: 800; color: var(--gold); flex: none; white-space: nowrap; }
+
 /* comparar (en panel) */
 .cmp-row { margin-bottom: .9rem; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .cmp-row__h { background: var(--surface-2); padding: .45rem .8rem; font-weight: 700; font-size: .85rem;
