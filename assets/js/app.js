@@ -826,6 +826,8 @@ const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { co
 function refName(ref) { const [bid, c, v] = ref.split(":"); return `${nameOf(bid)} ${c}:${v}`; }
 async function verseText(ref) { const [bid, c, v] = ref.split(":"); const e = await Data.es(bid); return (e.chapters[+c - 1] || [])[+v - 1] || ""; }
 const dayNum = () => Math.floor(Date.now() / 864e5);
+// vibración sutil (solo móviles que la soporten): hace el juego más satisfactorio
+const buzz = (p) => { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} };
 
 async function openMemorize() {
   $("#panelTitle").textContent = "Memorizar";
@@ -878,10 +880,16 @@ async function openMemorize() {
   } catch (e) { body.replaceChildren(errorEl(e)); }
 }
 
+// Rondas cortas: practicamos pocos versículos por tanda para que no canse,
+// y ofrecemos «seguir» con los que queden (el bucle adictivo del «una más»).
+const SESSION_MAX = 5;
 async function startPractice(refs) {
-  const queue = [...refs]; let i = 0;
+  const all = [...refs];
+  const queue = all.slice(0, SESSION_MAX);
+  const rest = all.slice(SESSION_MAX);
+  let i = 0;
   const step = async () => {
-    if (i >= queue.length) return finishPractice(queue.length);
+    if (i >= queue.length) return finishPractice(queue.length, rest);
     const ref = queue[i];
     let text = ""; try { text = await verseText(ref); } catch (e) {}
     const m = Store.memAll().find((x) => x.ref === ref);
@@ -889,15 +897,24 @@ async function startPractice(refs) {
   };
   step();
 }
-function finishPractice(n) {
+function finishPractice(n, rest = []) {
   Store.streakMark();
   const body = $("#panelBody");
   const d = el("div", "mem-done",
     `<div class="mem-done__i">🎉</div><h3>¡Bien hecho!</h3>` +
     `<p class="muted">Practicaste ${n} versículo${n === 1 ? "" : "s"}. Racha: 🔥 ${Store.streakGet()} día${Store.streakGet() === 1 ? "" : "s"}.</p>`);
-  const b = el("button", "wc-go", "Volver");
+  buzz([0, 30, 40, 30, 40, 60]);
+  const frag = document.createDocumentFragment();
+  frag.appendChild(d);
+  if (rest.length) {
+    const more = el("button", "wc-go", `Seguir · ${rest.length} más`);
+    more.onclick = () => startPractice(rest);
+    frag.appendChild(more);
+  }
+  const b = el("button", rest.length ? "mem-peekbtn" : "wc-go", "Volver");
   b.onclick = () => openMemorize();
-  body.replaceChildren(d, b);
+  frag.appendChild(b);
+  body.replaceChildren(frag);
 }
 /* --- Modos de juego: la app los rota según cuánto domines el versículo --- */
 const MEM_MODES = {
@@ -949,6 +966,7 @@ function gameCard(ref, text, lvl, idx, total, onDone) {
   const win = () => {
     status.className = "mem-status win";
     status.textContent = errors === 0 ? "✓ ¡Perfecto!" : "✓ ¡Lo lograste!";
+    buzz([0, 22, 32, 45]);
     setTimeout(onDone, 1100);
   };
   const onErr = () => { errors++; };
@@ -985,7 +1003,7 @@ function buildSequence(frag, status, tokens, win, onErr, poolCls) {
     chip.onclick = () => {
       if (chip.disabled) return;
       if (chip._t === tokens[next]) {               // comparación por texto: tolera palabras repetidas
-        chip.classList.add("used"); chip.disabled = true;
+        chip.classList.add("used"); chip.disabled = true; buzz(8);
         target.appendChild(el("span", "mem-w", esc(tokens[next]) + " "));
         next++;
         if (next === tokens.length) {
@@ -1036,7 +1054,7 @@ function buildFill(frag, status, words, slotSet, win, onErr, maskAll) {
     chip.onclick = () => {
       if (chip.disabled) return;
       if (chip._t === slots[next].w) {              // por texto: cualquier ficha con la palabra correcta vale
-        chip.classList.add("used"); chip.disabled = true;
+        chip.classList.add("used"); chip.disabled = true; buzz(8);
         const sp = slots[next].span;
         sp.textContent = slots[next].w;
         sp.classList.add("filled");
@@ -1242,7 +1260,24 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2000);
 }
 function registerSW() {
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if (!("serviceWorker" in navigator)) return;
+  // Si ya nos controlaba una versión y entra una nueva, recargamos una sola
+  // vez de forma silenciosa: el usuario siempre tiene lo último sin tener que
+  // refrescar a mano. En la primera visita (sin controlador) no recargamos.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading || !hadController) return;
+    reloading = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register("sw.js").then((reg) => {
+    reg.update().catch(() => {});
+    // Al volver a abrir la pestaña, buscamos actualizaciones.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") reg.update().catch(() => {});
+    });
+  }).catch(() => {});
 }
 
 init();
