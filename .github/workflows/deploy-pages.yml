@@ -1,0 +1,59 @@
+name: Desplegar en GitHub Pages
+
+# Publica la app automáticamente en cada push a la rama de trabajo.
+# Usa el despliegue por GitHub Actions y habilita Pages por sí mismo
+# (enablement: true), sin necesidad de tocar los ajustes a mano.
+
+on:
+  push:
+    branches: ["claude/biblia-reina-valera-estudio-56z9fm"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un despliegue a la vez; no cancelar uno en curso.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@v4
+
+      - name: Configurar Pages (y habilitarlo si hace falta)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Preparar el sitio (sin archivos innecesarios)
+        run: |
+          mkdir -p _site
+          rsync -a \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '_site' \
+            --exclude 'xml' \
+            --exclude 'tools' \
+            ./ _site/
+
+      - name: Subir el artefacto del sitio
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Desplegar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
