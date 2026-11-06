@@ -53,6 +53,7 @@ async function init() {
   $$(".tab").forEach((t) => t.addEventListener("click", () => showView(t.dataset.view)));
   $("#btnNav").addEventListener("click", openNavigator);
   $("#btnTheme").addEventListener("click", cycleTheme);
+  $("#btnHelp").addEventListener("click", () => showWelcome());
   // cada botón/fondo [data-close] cierra SOLO su propia hoja (permite apilar)
   document.addEventListener("click", (e) => {
     const c = e.target.closest("[data-close]");
@@ -61,7 +62,39 @@ async function init() {
 
   updateMarksBadge();
   await renderReader();
+  if (!Store.get("onboarded")) showWelcome();
   registerSW();
+}
+
+/* --------- Bienvenida / ¿Cómo se usa? (para que sea intuitivo) --------- */
+function showWelcome() {
+  const body = $("#welcomeBody");
+  const steps = [
+    ["📖", "Elige qué leer", "Toca el nombre del libro arriba (por ejemplo «Génesis 1») para elegir cualquier libro y capítulo."],
+    ["👆", "Toca un versículo", "Aparece un menú con todo: resaltar con colores, guardar en favoritos, y estudiarlo a fondo."],
+    ["🧭", "Te guío paso a paso", "No necesitas saber hebreo ni nada de antes. La app te explica cada cosa en español, sencillo."],
+    ["⭐", "Tus marcas, siempre", "Lo que resaltes o guardes queda reunido en la pestaña «Mis marcas»."],
+  ];
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el("div", "wc-hero",
+    `<div class="wc-hero__i">📖</div><h2>Tu Biblia de Estudio</h2><p>Lee y entiende la Biblia de forma fácil, paso a paso. Así funciona:</p>`));
+  steps.forEach(([i, t, d]) => {
+    frag.appendChild(el("div", "wc-step",
+      `<span class="wc-step__i">${i}</span><span class="wc-step__t"><b>${esc(t)}</b><span>${esc(d)}</span></span>`));
+  });
+  const go = el("button", "wc-go", "Empezar a leer");
+  go.onclick = closeWelcome;
+  frag.appendChild(go);
+  const tip = el("p", "muted");
+  tip.style.cssText = "text-align:center;margin-top:.8rem;font-size:.82rem";
+  tip.innerHTML = "Puedes volver a ver esto con el botón <b>?</b> de arriba.";
+  frag.appendChild(tip);
+  body.replaceChildren(frag);
+  $("#welcome").hidden = false;
+}
+function closeWelcome() {
+  Store.set("onboarded", true);
+  $("#welcome").hidden = true;
 }
 
 /* --------------------------- Navegación vistas --------------------------- */

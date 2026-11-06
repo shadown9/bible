@@ -18,8 +18,18 @@
       <span id="refLabel">Génesis 1</span>
       <svg viewBox="0 0 24 24" class="chev" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
-    <button id="btnTheme" class="iconbtn" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
+    <div class="topbar__right">
+      <button id="btnHelp" class="iconbtn" title="¿Cómo se usa?" aria-label="Ayuda">?</button>
+      <button id="btnTheme" class="iconbtn" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
+    </div>
   </header>
+
+  <!-- Bienvenida / ¿Cómo se usa? -->
+  <div id="welcome" class="welcome" hidden>
+    <div class="welcome__card" role="dialog" aria-label="Bienvenida">
+      <div id="welcomeBody"></div>
+    </div>
+  </div>
 
   <!-- Vistas -->
   <main id="app">

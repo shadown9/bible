@@ -77,6 +77,26 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   padding: .5rem 1rem; font-size: 1.05rem; font-weight: 700;
 }
 .chev { width: 18px; height: 18px; }
+.topbar__right { display: flex; gap: .4rem; }
+
+/* Bienvenida / ¿Cómo se usa? */
+.welcome { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.5); padding: 1rem; animation: fade .2s; }
+.welcome[hidden] { display: none; }
+.welcome__card { width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto;
+  background: var(--surface); border-radius: 20px; box-shadow: var(--shadow);
+  padding: 1.5rem 1.3rem calc(1.3rem + env(safe-area-inset-bottom)); animation: slideup .3s cubic-bezier(.2,.9,.2,1); }
+.wc-hero { text-align: center; margin-bottom: 1.1rem; }
+.wc-hero__i { font-size: 2.6rem; }
+.wc-hero h2 { font-family: var(--ff-read); font-size: 1.5rem; color: var(--accent-soft); margin: .4rem 0 .3rem; }
+.wc-hero p { color: var(--text-soft); margin: 0; font-size: .98rem; line-height: 1.5; }
+.wc-step { display: flex; gap: .8rem; align-items: flex-start; padding: .8rem 0; border-top: 1px solid var(--line); }
+.wc-step__i { font-size: 1.6rem; flex: none; width: 2rem; text-align: center; }
+.wc-step__t b { display: block; font-size: 1rem; margin-bottom: .1rem; }
+.wc-step__t span { color: var(--text-soft); font-size: .92rem; line-height: 1.45; }
+.wc-go { width: 100%; margin-top: 1.1rem; background: var(--accent); color: var(--accent-ink);
+  border: none; border-radius: 14px; padding: .95rem; font-size: 1.05rem; font-weight: 700; }
+.wc-skip { display: block; margin: .7rem auto 0; background: none; border: none; color: var(--text-soft); font-size: .9rem; }
 .iconbtn {
   min-width: 44px; height: 44px; padding: 0 .6rem;
   display: inline-flex; align-items: center; justify-content: center;

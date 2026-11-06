@@ -14,6 +14,7 @@ const DEFAULTS = {
   highlights: {},         // "libro:cap:ver" -> color (amarillo|verde|azul|rosa|naranja)
   favorites: [],          // ["libro:cap:ver", ...] (más reciente primero)
   seenTip: false,         // si ya mostramos el consejo inicial
+  onboarded: false,       // si ya mostramos la bienvenida
   notes: {},              // "libro:cap:ver" -> { obs, int, app } notas del estudio guiado
 };
 
