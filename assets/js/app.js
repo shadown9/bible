@@ -509,7 +509,8 @@ function renderSettings() {
     "<b>Texto:</b> Reina Valera 1909 (dominio público). La RV1960 tiene derechos de autor.<br>" +
     "<b>Hebreo:</b> Códice de Leningrado / OpenScriptures (CC BY 4.0).<br>" +
     "<b>Significados:</b> ~1000 términos hebreos traducidos al español + Concordancia Strong.<br><br>" +
-    "Hecho para aprender la Palabra de forma profunda y sencilla."));
+    "Hecho para aprender la Palabra de forma profunda y sencilla.<br>" +
+    "<span style='opacity:.7'>Versión 1.0 · actualizada 6 nov 2026</span>"));
   frag.appendChild(c4);
   view.replaceChildren(frag);
 }
