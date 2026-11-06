@@ -294,42 +294,49 @@ async function openStudy(b, c, v, esText) {
     frag.appendChild(explainerCard());
     frag.appendChild(el("p", "study-intro", "Estudia este versículo en 6 pasos. Toca cada paso para abrirlo. No necesitas saber hebreo: la app te explica todo."));
 
-    // Paso 1 — Lee y observa
+    // Paso 1 — Ora y lee
     const s1 = el("div");
+    s1.appendChild(el("p", "step-q", "Antes de empezar, pide a Dios en una breve oración que te enseñe por su Palabra. Luego lee el versículo despacio; si puedes, lee también el de antes y el de después."));
     s1.appendChild(el("div", "study-es", `<span class="verse__n">${v}</span>${esc(esText)}`));
-    s1.appendChild(el("p", "step-q", "Léelo despacio y pregúntate: ¿Quién habla o actúa? ¿Qué sucede? ¿Hay palabras que se repiten o te llaman la atención?"));
-    s1.appendChild(noteBox(ref, "obs", "Escribe lo que observas…"));
-    frag.appendChild(stepCard(1, "Lee y observa", "¿Qué dice el texto?", s1, true));
+    frag.appendChild(stepCard(1, "Ora y lee", "Prepárate y lee el texto", s1, true));
 
-    // Paso 2 — El original (hebreo)
+    // Paso 2 — Observa
     const s2 = el("div");
-    s2.appendChild(el("p", "step-q", "Aquí ves cada palabra del texto hebreo con su significado en español. Fíjate en las palabras clave; toca cualquiera para ver más."));
-    s2.appendChild(legendCard());
-    s2.appendChild(buildWordByWord(words, dict, esMap));
-    frag.appendChild(stepCard(2, "Mira el original", "Las palabras en hebreo y su significado", s2, false));
+    s2.appendChild(el("p", "step-q", "¿Qué DICE el texto? Fíjate en los detalles: ¿Quién habla o actúa? ¿A quién? ¿Qué sucede? ¿Cuándo y dónde? ¿Hay palabras que se repiten o te llaman la atención?"));
+    s2.appendChild(noteBox(ref, "obs", "Escribe lo que observas…"));
+    frag.appendChild(stepCard(2, "Observa", "¿Qué dice el texto?", s2, false));
 
-    // Paso 3 — Compara
+    // Paso 3 — Contexto (la "C" de OICA: la clave para no equivocarse)
     const s3 = el("div");
-    s3.appendChild(el("p", "step-q", "El mismo versículo en español, hebreo e inglés. Comparar versiones ayuda a entenderlo mejor."));
-    const rows = el("div"); rows.id = "cmpRows"; s3.appendChild(rows);
-    s3.appendChild(compareSelector(b, c, v, options));
-    frag.appendChild(stepCard(3, "Compara versiones", "El versículo en varios idiomas", s3, false));
+    s3.appendChild(el("p", "step-q", "Ningún versículo se entiende solo. Pregúntate: ¿Qué pasó ANTES y DESPUÉS? ¿Quién escribió este libro y a quién? ¿Qué tipo de texto es: historia, poesía, ley, profecía o carta? El contexto es la clave para no sacar ideas equivocadas."));
+    s3.appendChild(noteBox(ref, "ctx", "Escribe el contexto que descubras…"));
+    frag.appendChild(stepCard(3, "Mira el contexto", "¿Qué hay alrededor?", s3, false));
 
-    // Paso 4 — Interpreta
+    // Paso 4 — Mira el original
     const s4 = el("div");
-    s4.appendChild(el("p", "step-q", "Con lo que observaste y el significado de las palabras: ¿Qué quiso decir el autor a sus primeros lectores? ¿Qué nos enseña sobre Dios?"));
-    s4.appendChild(noteBox(ref, "int", "Escribe qué significa…"));
-    frag.appendChild(stepCard(4, "¿Qué significa?", "Interpretación", s4, false));
+    s4.appendChild(el("p", "step-q", "Mira cada palabra del hebreo con su significado en español. Toca una para ver más."));
+    s4.appendChild(legendCard());
+    s4.appendChild(buildWordByWord(words, dict, esMap));
+    s4.appendChild(el("p", "step-note", "⚠️ Importante: el significado real de una palabra depende del CONTEXTO donde se usa, no solo del diccionario ni de su origen. Úsalo para entender mejor, no para forzar una idea."));
+    frag.appendChild(stepCard(4, "Mira el original", "Las palabras en hebreo y su significado", s4, false));
 
-    // Paso 5 — Aplica
+    // Paso 5 — Compara
     const s5 = el("div");
-    s5.appendChild(el("p", "step-q", "¿Qué debo creer, cambiar o hacer hoy por lo que dice este versículo? Escribe una acción concreta."));
-    s5.appendChild(noteBox(ref, "app", "Escribe cómo lo aplicas a tu vida…"));
-    frag.appendChild(stepCard(5, "¿Qué hago yo?", "Aplicación a tu vida", s5, false));
+    s5.appendChild(el("p", "step-q", "El mismo versículo en español, hebreo e inglés. Comparar ayuda a entenderlo. (En el paso anterior, al tocar una palabra, también puedes ver en qué otros versículos aparece: eso se llama correlación.)"));
+    const rows = el("div"); rows.id = "cmpRows"; s5.appendChild(rows);
+    s5.appendChild(compareSelector(b, c, v, options));
+    frag.appendChild(stepCard(5, "Compara", "El versículo en varios idiomas", s5, false));
 
-    // Paso 6 — Ora y guarda
+    // Paso 6 — Interpreta
     const s6 = el("div");
-    s6.appendChild(el("p", "step-q", "Responde a Dios en oración por lo que aprendiste. Y guarda este versículo para recordarlo:"));
+    s6.appendChild(el("p", "step-q", "Une todo lo anterior: ¿Qué quiso decir el autor a sus PRIMEROS lectores, en su contexto? ¿Qué nos enseña sobre Dios? (Primero qué significó para ellos; luego, qué significa hoy.)"));
+    s6.appendChild(noteBox(ref, "int", "Escribe qué significa…"));
+    frag.appendChild(stepCard(6, "¿Qué significa?", "Interpretación", s6, false));
+
+    // Paso 7 — Aplica y responde
+    const s7 = el("div");
+    s7.appendChild(el("p", "step-q", "¿Qué debo creer, cambiar o hacer hoy por lo que dice este versículo? Escribe una acción concreta, responde a Dios en oración, y guárdalo para recordarlo:"));
+    s7.appendChild(noteBox(ref, "app", "Escribe cómo lo aplicas a tu vida…"));
     const acts = el("div", "step-actions");
     const favB = el("button", "action");
     const paintFav = () => {
@@ -348,8 +355,8 @@ async function openStudy(b, c, v, esText) {
     hlB.onclick = () => { const on = Store.getHighlight(ref) === "amarillo"; Store.setHighlight(ref, on ? null : "amarillo"); updateVerseDom(ref); updateMarksBadge(); paintHl(); toast(on ? "Resaltado quitado" : "Resaltado ✓"); };
     paintHl();
     acts.append(favB, hlB);
-    s6.appendChild(acts);
-    frag.appendChild(stepCard(6, "Ora y guarda", "Responde y recuerda", s6, false));
+    s7.appendChild(acts);
+    frag.appendChild(stepCard(7, "Aplica y responde", "¿Qué hago yo? Ora y guarda", s7, false));
 
     body.replaceChildren(frag);
     await drawStudyRows(b, c, v, options);
@@ -362,11 +369,11 @@ function explainerCard() {
   d.appendChild(el("summary", null, "❓ ¿Primera vez? Qué significan estas cosas"));
   const body = el("div", "explainer__b");
   body.innerHTML =
-    "<p><b>¿Por qué el hebreo?</b> El Antiguo Testamento se escribió en hebreo. Mirar la palabra original te ayuda a entender mejor lo que quiso decir el autor, más allá de la traducción.</p>" +
+    "<p><b>¿Qué método sigue esta guía?</b> El <b>método inductivo</b>, el más usado para estudiar la Biblia: observar, interpretar y aplicar, añadiendo el <b>contexto</b> (en español se enseña como <b>OICA</b>). La meta: entender qué quiso decir el autor en su tiempo y qué significa hoy.</p>" +
+    "<p><b>¿Por qué el hebreo?</b> El Antiguo Testamento se escribió en hebreo. Mirar la palabra original ayuda a entender mejor al autor, más allá de la traducción.</p>" +
     "<p><b>La palabra en hebreo</b> se lee de derecha a izquierda (ejemplo: הָיָה).</p>" +
-    "<p><b>La pronunciación</b> (en <i>cursiva</i>, como «háyah») te dice cómo suena esa palabra.</p>" +
-    "<p><b>El código Strong</b> (como «H1961») es un número que identifica cada palabra hebrea. Con él puedes ver su significado exacto y todos los versículos donde aparece, aunque no sepas hebreo.</p>" +
-    "<p><b>El significado</b> es qué quiere decir esa palabra en español.</p>";
+    "<p><b>La pronunciación</b> (en <i>cursiva</i>, como «háyah») te dice cómo suena.</p>" +
+    "<p><b>El código Strong</b> (como «H1961») es un número que identifica cada palabra hebrea; con él ves su significado y dónde más aparece, aunque no sepas hebreo.</p>";
   d.appendChild(body);
   return d;
 }
@@ -513,8 +520,10 @@ async function openWord(code, augmented) {
     // Detalle adicional en inglés (opcional)
     if (defEs && entry && (entry.def || entry.kjv))
       frag.appendChild(wsec("Más detalle (en inglés, opcional)", esc(entry.def || entry.kjv)));
-    if (entry && entry.deriv)
+    if (entry && entry.deriv) {
       frag.appendChild(wsec("De dónde viene la palabra", esc(entry.deriv)));
+      frag.appendChild(el("p", "muted", "⚠️ El origen ayuda, pero el significado real lo decide el contexto donde se usa la palabra, no su raíz."));
+    }
 
     // Apariciones, con explicación de para qué sirve
     const occSec = el("div", "wsec");
