@@ -6,7 +6,7 @@ name: Desplegar en GitHub Pages
 
 on:
   push:
-    branches: ["claude/biblia-reina-valera-estudio-56z9fm"]
+    branches: ["master"]
   workflow_dispatch:
 
 permissions:
