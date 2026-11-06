@@ -60,6 +60,15 @@ async function init() {
     if (c) { const s = c.closest(".sheet"); if (s) s.hidden = true; }
   });
 
+  // Bloquear el scroll del fondo cuando hay un panel/hoja abierto
+  const overlays = [...$$(".sheet"), $("#welcome")].filter(Boolean);
+  const updateScrollLock = () => {
+    const open = overlays.some((s) => !s.hidden);
+    document.documentElement.classList.toggle("locked", open);
+  };
+  const obs = new MutationObserver(updateScrollLock);
+  overlays.forEach((s) => obs.observe(s, { attributes: true, attributeFilter: ["hidden"] }));
+
   updateMarksBadge();
   await renderReader();
   if (!Store.get("onboarded")) showWelcome();
