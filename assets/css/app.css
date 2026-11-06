@@ -91,7 +91,21 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* ---------- Lectura ---------- */
-.chapter-title { font-family: var(--ff-read); font-size: 1.6rem; color: var(--accent-soft); margin: .3rem 0 1rem; }
+.chapter-title { font-family: var(--ff-read); font-size: 1.6rem; color: var(--accent-soft); margin: .3rem 0 .5rem; }
+.bookbar { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin: 0 0 1rem; }
+.bookbar__genre { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--accent-soft); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: .3rem .7rem; }
+.bookbar__about { font-size: .85rem; font-weight: 600; color: var(--accent-soft); background: none; border: none; padding: .3rem .2rem; }
+.bi-genre-name { font-family: var(--ff-read); font-size: 1.3rem; color: var(--hebrew); margin-bottom: .3rem; }
+.bookintro__genre { margin-bottom: 1rem; }
+.bi-facts { display: flex; flex-direction: column; gap: .4rem; margin: .4rem 0 1rem; }
+.bi-fact { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+.bi-fact span { color: var(--text-soft); font-size: .88rem; }
+.bi-fact b { text-align: right; font-size: .92rem; }
+.bi-outline { margin: .3rem 0 0; padding-left: 1.1rem; }
+.bi-outline li { font-size: .98rem; line-height: 1.5; margin-bottom: .25rem; }
+.occ-key { border: 1px solid var(--line); background: var(--surface-2); color: var(--accent-soft);
+  border-radius: 10px; padding: .55rem .8rem; font-size: .95rem; font-weight: 700; }
 .verse {
   position: relative;
   font-family: var(--ff-read); font-size: var(--fs-read); line-height: 1.85;

@@ -31,6 +31,19 @@ const DAILY = [
   ["santiago", 1, 5], ["galatas", 5, 22], ["isaias", 40, 31], ["deuteronomio", 31, 6],
 ];
 
+// Géneros literarios: nombre y cómo leer cada uno (lo #1 de la hermenéutica)
+const GENRES = {
+  narrativa: { n: "Narrativa / Historia", c: "Cuenta hechos reales. Pregúntate qué está haciendo DIOS en la historia, no solo qué hacen los personajes. No todo lo que se narra se aprueba: observa, no copies sin pensar." },
+  ley: { n: "Ley", c: "Son instrucciones del pacto de Dios con Israel. Busca el principio y el carácter de Dios detrás de cada mandato, y cómo se cumple en Cristo." },
+  sabiduria: { n: "Sabiduría", c: "Enseña a vivir bien. Los proverbios son principios generales, no promesas absolutas. Job y Eclesiastés plantean las grandes preguntas de la vida." },
+  poesia: { n: "Poesía", c: "Usa imágenes, sentimientos y paralelismo (repetir una idea con otras palabras). No la leas de forma tan literal; siente lo que expresa a Dios." },
+  profecia: { n: "Profecía", c: "Más que predecir el futuro, es llamar al pueblo a volver a Dios. Fíjate en el pecado que denuncia, el juicio y la esperanza que anuncia." },
+  evangelio: { n: "Evangelio", c: "Presenta la vida, muerte y resurrección de Jesús. Cada evangelista lo cuenta con un énfasis. Observa qué revela de quién es Jesús." },
+  hechos: { n: "Historia (la iglesia)", c: "Narra cómo creció la iglesia por el Espíritu. Describe lo que pasó; no todo es un mandato para repetir, pero muestra el patrón de la misión." },
+  epistola: { n: "Carta", c: "Es una carta a una situación concreta. Lee el párrafo entero, sigue el argumento, y pregunta qué les decía a ellos antes de aplicarlo hoy." },
+  apocaliptica: { n: "Apocalíptica", c: "Usa visiones y símbolos para dar esperanza a los perseguidos. No fuerces cada símbolo; capta el mensaje central: Dios vence." },
+};
+
 /* ----------------------------- Arranque ----------------------------- */
 async function init() {
   applyTheme(Store.get("theme"));
@@ -126,6 +139,19 @@ async function renderReader(scrollVerse) {
       frag.appendChild(await dailyCard());
     frag.appendChild(el("h2", "chapter-title", `${b.name} ${nav.chapter}`));
 
+    // barra del libro: género + "Sobre este libro"
+    const intro = await Data.booksIntro().catch(() => ({}));
+    const bi = intro[b.id];
+    if (bi) {
+      const bar = el("div", "bookbar");
+      const gen = GENRES[bi.g];
+      const chip = el("span", "bookbar__genre", gen ? gen.n : "");
+      const btn = el("button", "bookbar__about", `ℹ️ Sobre ${b.name}`);
+      btn.onclick = () => openBookIntro(b, bi);
+      bar.append(chip, btn);
+      frag.appendChild(bar);
+    }
+
     verses.forEach((text, i) => {
       frag.appendChild(verseEl(b, nav.chapter, i + 1, text));
     });
@@ -160,6 +186,52 @@ function pager(b) {
   next.onclick = () => goTo(b.id, nav.chapter + 1);
   wrap.append(prev, next);
   return wrap;
+}
+
+// Pantalla "Sobre este libro": género, cómo leerlo e introducción
+async function openBookIntro(b, bi) {
+  $("#panelTitle").textContent = `Sobre ${b.name}`;
+  const body = $("#panelBody");
+  const frag = document.createDocumentFragment();
+  const gen = GENRES[bi.g];
+
+  if (gen) {
+    const gc = el("div", "bookintro__genre");
+    gc.innerHTML = `<div class="cmp-sel-h">Tipo de texto (género)</div><div class="bi-genre-name">${esc(gen.n)}</div><p class="muted">${esc(gen.c)}</p>`;
+    frag.appendChild(gc);
+  }
+
+  const facts = el("div", "bi-facts");
+  const row = (lab, val) => val ? `<div class="bi-fact"><span>${lab}</span><b>${esc(val)}</b></div>` : "";
+  facts.innerHTML =
+    row("Autor", bi.autor) + row("Fecha", bi.fecha) + row("Escrito para", bi.para);
+  frag.appendChild(facts);
+
+  if (bi.prop) frag.appendChild(wsec("De qué trata", esc(bi.prop)));
+  if (bi.tema) frag.appendChild(wsec("Tema central", esc(bi.tema)));
+
+  if (bi.clave) {
+    const [kb, kc, kv] = bi.clave.split(":");
+    const ks = el("div", "wsec");
+    ks.appendChild(el("h4", null, "Versículo clave"));
+    const kbtn = el("button", "occ-key");
+    kbtn.textContent = `${b.name} ${kc}:${kv}  ›`;
+    kbtn.onclick = () => { $$(".sheet").forEach((s) => (s.hidden = true)); goTo(kb, +kc, +kv); };
+    ks.appendChild(kbtn);
+    frag.appendChild(ks);
+  }
+
+  if (bi.bosquejo && bi.bosquejo.length) {
+    const os = el("div", "wsec");
+    os.appendChild(el("h4", null, "Bosquejo"));
+    const ul = el("ul", "bi-outline");
+    bi.bosquejo.forEach((p) => ul.appendChild(el("li", null, esc(p))));
+    os.appendChild(ul);
+    frag.appendChild(os);
+  }
+
+  body.replaceChildren(frag);
+  $("#panel").hidden = false;
 }
 
 function tipCard() {

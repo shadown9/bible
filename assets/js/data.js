@@ -26,6 +26,7 @@ export const Data = {
   strongsGr: () => getJSON("data/strongs_gr.json"),
   concordanceHe: () => getJSON("data/concordance_he.json"),
   versions: () => getJSON("data/versions.json"),
+  booksIntro: () => getJSON("data/books_intro.json"),
   // Archivos de versiones del repo original: [{abbrev, name, chapters:[[...]]}]
   versionFile: (file) => getJSON(file),
 };
