@@ -899,50 +899,160 @@ function finishPractice(n) {
   b.onclick = () => openMemorize();
   body.replaceChildren(d, b);
 }
+/* --- Modos de juego: la app los rota según cuánto domines el versículo --- */
+const MEM_MODES = {
+  armaLearn: { name: "🧠 Aprende el versículo", hint: "Mira el texto y tócalo en orden para fijarlo:" },
+  arma:      { name: "🧩 Arma el versículo", hint: "Toca las palabras en el orden correcto:" },
+  trozos:    { name: "🧱 Ordena los trozos", hint: "Toca los trozos en orden hasta formar el versículo:" },
+  hueco:     { name: "⬜ Rellena los huecos", hint: "Toca las palabras que faltan, en orden:" },
+  letra:     { name: "🔤 Primera letra", hint: "Solo ves la primera letra. Toca las palabras en orden de memoria:" },
+};
+// conjuntos de modos disponibles por nivel (0..5); se elige uno al azar
+const MEM_LEVEL_MODES = [
+  ["armaLearn"],        // 0 · nuevo: aprender con el texto a la vista
+  ["arma", "trozos"],   // 1
+  ["trozos", "hueco"],  // 2
+  ["hueco", "arma"],    // 3
+  ["hueco", "letra"],   // 4
+  ["letra"],            // 5 · dominado: todo de memoria
+];
+function modeForLevel(lvl) {
+  const set = MEM_LEVEL_MODES[Math.max(0, Math.min(lvl | 0, 5))];
+  return set[Math.floor(Math.random() * set.length)];
+}
+function firstLetterMask(w) {
+  const n = w.length;
+  if (n <= 1) return w;
+  return w[0] + "·".repeat(Math.min(n - 1, 6));
+}
+
 function gameCard(ref, text, lvl, idx, total, onDone) {
   const body = $("#panelBody");
+  const mode = modeForLevel(lvl);
   const words = text.split(/\s+/).filter(Boolean);
-  let next = 0, errors = 0;
   const frag = document.createDocumentFragment();
-  frag.appendChild(el("div", "mem-progress", `Versículo ${idx + 1} de ${total} · ${MEM_LABEL[lvl]}`));
+  frag.appendChild(el("div", "mem-progress", `Versículo ${idx + 1} de ${total} · ${esc(MEM_MODES[mode].name)}`));
   frag.appendChild(el("div", "mem-ref", refName(ref)));
-  const peek = el("div", "mem-peek" + (lvl === 0 ? " show" : ""), esc(text));
+
+  // El texto se ve solo en modo aprendizaje; en el resto, un vistazo rápido.
+  const peek = el("div", "mem-peek" + (mode === "armaLearn" ? " show" : ""), esc(text));
   frag.appendChild(peek);
-  if (lvl > 0) {
+  if (mode !== "armaLearn") {
     const pb = el("button", "mem-peekbtn", "👁 Ver un momento");
     pb.onclick = () => { peek.classList.add("show"); setTimeout(() => peek.classList.remove("show"), 1800); };
     frag.appendChild(pb);
   }
-  frag.appendChild(el("p", "mem-hint", "Toca las palabras en orden:"));
+  frag.appendChild(el("p", "mem-hint", MEM_MODES[mode].hint));
+
+  const status = el("div", "mem-status");
+  let errors = 0;
+  const win = () => {
+    status.className = "mem-status win";
+    status.textContent = errors === 0 ? "✓ ¡Perfecto!" : "✓ ¡Lo lograste!";
+    setTimeout(onDone, 1100);
+  };
+  const onErr = () => { errors++; };
+
+  if (mode === "trozos") {
+    let parts = text.split(/(?<=[,;:.—])\s+/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length < 3) {
+      parts = [];
+      for (let i = 0; i < words.length; i += 3) parts.push(words.slice(i, i + 3).join(" "));
+    }
+    buildSequence(frag, status, parts, win, onErr, "mem-pool--chunks");
+  } else if (mode === "hueco") {
+    buildFill(frag, status, words, huecoSlots(words), win, onErr);
+  } else if (mode === "letra") {
+    buildFill(frag, status, words, new Set(words.map((_, i) => i)), win, onErr, true);
+  } else {
+    buildSequence(frag, status, words, win, onErr);
+  }
+
+  body.replaceChildren(frag);
+  body.scrollTop = 0;
+}
+
+// Tocar fichas sueltas para reconstruir una secuencia (arma / trozos).
+function buildSequence(frag, status, tokens, win, onErr, poolCls) {
   const target = el("div", "mem-target");
   frag.appendChild(target);
-  const status = el("div", "mem-status");
   frag.appendChild(status);
-  const pool = el("div", "mem-pool");
-  shuffle(words.map((w, i) => i)).forEach((wi) => {
-    const chip = el("button", "mem-chip", esc(words[wi]));
+  const pool = el("div", "mem-pool" + (poolCls ? " " + poolCls : ""));
+  let next = 0;
+  shuffle(tokens.map((_, i) => i)).forEach((ti) => {
+    const chip = el("button", "mem-chip", esc(tokens[ti]));
+    chip._t = tokens[ti];
     chip.onclick = () => {
-      if (wi === next) {
+      if (chip.disabled) return;
+      if (chip._t === tokens[next]) {               // comparación por texto: tolera palabras repetidas
         chip.classList.add("used"); chip.disabled = true;
-        target.appendChild(el("span", "mem-w", esc(words[next]) + " "));
+        target.appendChild(el("span", "mem-w", esc(tokens[next]) + " "));
         next++;
-        if (next === words.length) {
+        if (next === tokens.length) {
           target.classList.add("ok");
-          status.className = "mem-status win";
-          status.textContent = errors === 0 ? "✓ ¡Perfecto!" : "✓ ¡Lo lograste!";
           pool.querySelectorAll("button").forEach((b) => (b.disabled = true));
-          setTimeout(onDone, 1100);
+          win();
         }
       } else {
-        chip.classList.add("shake"); errors++;
+        chip.classList.add("shake"); onErr();
         setTimeout(() => chip.classList.remove("shake"), 420);
       }
     };
     pool.appendChild(chip);
   });
   frag.appendChild(pool);
-  body.replaceChildren(frag);
-  body.scrollTop = 0;
+}
+
+// Elige ~40% de las palabras (preferiblemente largas) para dejar en blanco.
+function huecoSlots(words) {
+  const cand = words.map((_, i) => i).filter((i) => words[i].replace(/[^\p{L}]/gu, "").length >= 4);
+  const pool = cand.length >= 2 ? cand : words.map((_, i) => i);
+  const k = Math.max(1, Math.round(pool.length * 0.4));
+  return new Set(shuffle(pool).slice(0, k));
+}
+
+// Rellenar huecos dentro de la frase (hueco / primera letra).
+function buildFill(frag, status, words, slotSet, win, onErr, maskAll) {
+  const sentence = el("div", "mem-sentence");
+  const slots = [];
+  words.forEach((w, i) => {
+    if (slotSet.has(i)) {
+      const sp = el("span", "mem-slot", esc(maskAll ? firstLetterMask(w) : "___"));
+      sentence.appendChild(sp);
+      slots.push({ w, span: sp });
+    } else {
+      sentence.appendChild(el("span", "mem-word", esc(w)));
+    }
+    sentence.appendChild(document.createTextNode(" "));
+  });
+  frag.appendChild(sentence);
+  frag.appendChild(status);
+
+  let next = 0;
+  const pool = el("div", "mem-pool");
+  shuffle(slots.map((_, k) => k)).forEach((sk) => {
+    const chip = el("button", "mem-chip", esc(slots[sk].w));
+    chip._t = slots[sk].w;
+    chip.onclick = () => {
+      if (chip.disabled) return;
+      if (chip._t === slots[next].w) {              // por texto: cualquier ficha con la palabra correcta vale
+        chip.classList.add("used"); chip.disabled = true;
+        const sp = slots[next].span;
+        sp.textContent = slots[next].w;
+        sp.classList.add("filled");
+        next++;
+        if (next === slots.length) {
+          pool.querySelectorAll("button").forEach((b) => (b.disabled = true));
+          win();
+        }
+      } else {
+        chip.classList.add("shake"); onErr();
+        setTimeout(() => chip.classList.remove("shake"), 420);
+      }
+    };
+    pool.appendChild(chip);
+  });
+  frag.appendChild(pool);
 }
 
 /* ------------------------------ Mis marcas ------------------------------ */

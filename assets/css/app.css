@@ -351,6 +351,15 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .mem-chip.used { opacity: 0; pointer-events: none; }
 .mem-chip.shake { animation: shake .4s; border-color: var(--danger); }
 @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+.mem-pool--chunks .mem-chip { font-size: 1rem; }
+/* frase con huecos / primera letra */
+.mem-sentence { font-family: var(--ff-read); font-size: 1.15rem; line-height: 2; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 12px; padding: .8rem; margin-bottom: .7rem; }
+.mem-word { color: var(--text); }
+.mem-slot { display: inline-block; min-width: 2.2rem; text-align: center; color: var(--accent-soft); font-weight: 700;
+  border-bottom: 2px solid var(--accent-soft); border-radius: 3px; padding: 0 .15rem; letter-spacing: .06em; }
+.mem-slot.filled { color: var(--text); border-bottom-color: transparent; font-weight: 400; letter-spacing: normal;
+  background: color-mix(in srgb, var(--accent-soft) 16%, transparent); animation: pop .25s ease; }
 .mem-done { text-align: center; padding: 2rem 1rem 1rem; }
 .mem-done__i { font-size: 3rem; }
 .mem-done h3 { margin: .4rem 0 .3rem; color: var(--accent-soft); }
