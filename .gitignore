@@ -1,0 +1,5 @@
+# Caché de descargas del pipeline de datos (regenerable con tools/build_data.py)
+tools/.cache/
+# Temporales
+*.log
+.DS_Store

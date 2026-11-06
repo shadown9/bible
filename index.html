@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es" data-theme="auto">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1b4332" />
+  <meta name="description" content="Estudia la Biblia de forma profunda y sencilla: lectura, comparación de versiones y análisis palabra por palabra del hebreo con números de Strong." />
+  <title>Biblia de Estudio</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/app.css" />
+</head>
+<body>
+  <!-- Barra superior -->
+  <header class="topbar">
+    <button id="btnNav" class="topbar__ref" aria-haspopup="dialog">
+      <span id="refLabel">Génesis 1</span>
+      <svg viewBox="0 0 24 24" class="chev" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="topbar__actions">
+      <button id="btnInterlinear" class="iconbtn" title="Interlineal hebreo" aria-pressed="false">עב</button>
+      <button id="btnTheme" class="iconbtn" title="Tema">◐</button>
+    </div>
+  </header>
+
+  <!-- Vistas -->
+  <main id="app">
+    <section id="view-read" class="view is-active"></section>
+    <section id="view-compare" class="view"></section>
+    <section id="view-search" class="view"></section>
+    <section id="view-settings" class="view"></section>
+  </main>
+
+  <!-- Navegación inferior -->
+  <nav class="tabbar">
+    <button class="tab is-active" data-view="read"><span class="tab__i">📖</span><span>Leer</span></button>
+    <button class="tab" data-view="compare"><span class="tab__i">⇄</span><span>Comparar</span></button>
+    <button class="tab" data-view="search"><span class="tab__i">🔍</span><span>Buscar</span></button>
+    <button class="tab" data-view="settings"><span class="tab__i">⚙️</span><span>Ajustes</span></button>
+  </nav>
+
+  <!-- Selector de libro/capítulo -->
+  <div id="navigator" class="sheet" hidden>
+    <div class="sheet__backdrop" data-close></div>
+    <div class="sheet__panel" role="dialog" aria-label="Elegir libro y capítulo">
+      <div class="sheet__head">
+        <strong id="navTitle">Libros</strong>
+        <button class="iconbtn" data-close aria-label="Cerrar">✕</button>
+      </div>
+      <div class="sheet__tabs">
+        <button class="pill is-active" data-test="AT">Antiguo Testamento</button>
+        <button class="pill" data-test="NT">Nuevo Testamento</button>
+      </div>
+      <div id="navBody" class="sheet__body"></div>
+    </div>
+  </div>
+
+  <!-- Estudio de palabra (diccionario Strong) -->
+  <div id="word" class="sheet" hidden>
+    <div class="sheet__backdrop" data-close></div>
+    <div class="sheet__panel sheet__panel--word" role="dialog" aria-label="Estudio de palabra">
+      <div class="sheet__head">
+        <strong>Estudio de palabra</strong>
+        <button class="iconbtn" data-close aria-label="Cerrar">✕</button>
+      </div>
+      <div id="wordBody" class="sheet__body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>

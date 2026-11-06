@@ -1,0 +1,662 @@
+[
+{
+"n": 1,
+"id": "genesis",
+"name": "Génesis",
+"abbrev": "gn",
+"osis": "Gen",
+"testament": "AT",
+"chapters": 50,
+"hasHebrew": true
+},
+{
+"n": 2,
+"id": "exodo",
+"name": "Éxodo",
+"abbrev": "ex",
+"osis": "Exod",
+"testament": "AT",
+"chapters": 40,
+"hasHebrew": true
+},
+{
+"n": 3,
+"id": "levitico",
+"name": "Levítico",
+"abbrev": "lv",
+"osis": "Lev",
+"testament": "AT",
+"chapters": 27,
+"hasHebrew": true
+},
+{
+"n": 4,
+"id": "numeros",
+"name": "Números",
+"abbrev": "nm",
+"osis": "Num",
+"testament": "AT",
+"chapters": 36,
+"hasHebrew": true
+},
+{
+"n": 5,
+"id": "deuteronomio",
+"name": "Deuteronomio",
+"abbrev": "dt",
+"osis": "Deut",
+"testament": "AT",
+"chapters": 34,
+"hasHebrew": true
+},
+{
+"n": 6,
+"id": "josue",
+"name": "Josué",
+"abbrev": "js",
+"osis": "Josh",
+"testament": "AT",
+"chapters": 24,
+"hasHebrew": true
+},
+{
+"n": 7,
+"id": "jueces",
+"name": "Jueces",
+"abbrev": "jud",
+"osis": "Judg",
+"testament": "AT",
+"chapters": 21,
+"hasHebrew": true
+},
+{
+"n": 8,
+"id": "rut",
+"name": "Rut",
+"abbrev": "rt",
+"osis": "Ruth",
+"testament": "AT",
+"chapters": 4,
+"hasHebrew": true
+},
+{
+"n": 9,
+"id": "1-samuel",
+"name": "1 Samuel",
+"abbrev": "1sm",
+"osis": "1Sam",
+"testament": "AT",
+"chapters": 31,
+"hasHebrew": true
+},
+{
+"n": 10,
+"id": "2-samuel",
+"name": "2 Samuel",
+"abbrev": "2sm",
+"osis": "2Sam",
+"testament": "AT",
+"chapters": 24,
+"hasHebrew": true
+},
+{
+"n": 11,
+"id": "1-reyes",
+"name": "1 Reyes",
+"abbrev": "1kgs",
+"osis": "1Kgs",
+"testament": "AT",
+"chapters": 22,
+"hasHebrew": true
+},
+{
+"n": 12,
+"id": "2-reyes",
+"name": "2 Reyes",
+"abbrev": "2kgs",
+"osis": "2Kgs",
+"testament": "AT",
+"chapters": 25,
+"hasHebrew": true
+},
+{
+"n": 13,
+"id": "1-cronicas",
+"name": "1 Crónicas",
+"abbrev": "1ch",
+"osis": "1Chr",
+"testament": "AT",
+"chapters": 29,
+"hasHebrew": true
+},
+{
+"n": 14,
+"id": "2-cronicas",
+"name": "2 Crónicas",
+"abbrev": "2ch",
+"osis": "2Chr",
+"testament": "AT",
+"chapters": 36,
+"hasHebrew": true
+},
+{
+"n": 15,
+"id": "esdras",
+"name": "Esdras",
+"abbrev": "ezr",
+"osis": "Ezra",
+"testament": "AT",
+"chapters": 10,
+"hasHebrew": true
+},
+{
+"n": 16,
+"id": "nehemias",
+"name": "Nehemías",
+"abbrev": "ne",
+"osis": "Neh",
+"testament": "AT",
+"chapters": 13,
+"hasHebrew": true
+},
+{
+"n": 17,
+"id": "ester",
+"name": "Ester",
+"abbrev": "et",
+"osis": "Esth",
+"testament": "AT",
+"chapters": 10,
+"hasHebrew": true
+},
+{
+"n": 18,
+"id": "job",
+"name": "Job",
+"abbrev": "job",
+"osis": "Job",
+"testament": "AT",
+"chapters": 42,
+"hasHebrew": true
+},
+{
+"n": 19,
+"id": "salmos",
+"name": "Salmos",
+"abbrev": "ps",
+"osis": "Ps",
+"testament": "AT",
+"chapters": 150,
+"hasHebrew": true
+},
+{
+"n": 20,
+"id": "proverbios",
+"name": "Proverbios",
+"abbrev": "prv",
+"osis": "Prov",
+"testament": "AT",
+"chapters": 31,
+"hasHebrew": true
+},
+{
+"n": 21,
+"id": "eclesiastes",
+"name": "Eclesiastés",
+"abbrev": "ec",
+"osis": "Eccl",
+"testament": "AT",
+"chapters": 12,
+"hasHebrew": true
+},
+{
+"n": 22,
+"id": "cantares",
+"name": "Cantares",
+"abbrev": "so",
+"osis": "Song",
+"testament": "AT",
+"chapters": 8,
+"hasHebrew": true
+},
+{
+"n": 23,
+"id": "isaias",
+"name": "Isaías",
+"abbrev": "is",
+"osis": "Isa",
+"testament": "AT",
+"chapters": 66,
+"hasHebrew": true
+},
+{
+"n": 24,
+"id": "jeremias",
+"name": "Jeremías",
+"abbrev": "jr",
+"osis": "Jer",
+"testament": "AT",
+"chapters": 52,
+"hasHebrew": true
+},
+{
+"n": 25,
+"id": "lamentaciones",
+"name": "Lamentaciones",
+"abbrev": "lm",
+"osis": "Lam",
+"testament": "AT",
+"chapters": 5,
+"hasHebrew": true
+},
+{
+"n": 26,
+"id": "ezequiel",
+"name": "Ezequiel",
+"abbrev": "ez",
+"osis": "Ezek",
+"testament": "AT",
+"chapters": 48,
+"hasHebrew": true
+},
+{
+"n": 27,
+"id": "daniel",
+"name": "Daniel",
+"abbrev": "dn",
+"osis": "Dan",
+"testament": "AT",
+"chapters": 12,
+"hasHebrew": true
+},
+{
+"n": 28,
+"id": "oseas",
+"name": "Oseas",
+"abbrev": "ho",
+"osis": "Hos",
+"testament": "AT",
+"chapters": 14,
+"hasHebrew": true
+},
+{
+"n": 29,
+"id": "joel",
+"name": "Joel",
+"abbrev": "jl",
+"osis": "Joel",
+"testament": "AT",
+"chapters": 3,
+"hasHebrew": true
+},
+{
+"n": 30,
+"id": "amos",
+"name": "Amós",
+"abbrev": "am",
+"osis": "Amos",
+"testament": "AT",
+"chapters": 9,
+"hasHebrew": true
+},
+{
+"n": 31,
+"id": "abdias",
+"name": "Abdías",
+"abbrev": "ob",
+"osis": "Obad",
+"testament": "AT",
+"chapters": 1,
+"hasHebrew": true
+},
+{
+"n": 32,
+"id": "jonas",
+"name": "Jonás",
+"abbrev": "jn",
+"osis": "Jonah",
+"testament": "AT",
+"chapters": 4,
+"hasHebrew": true
+},
+{
+"n": 33,
+"id": "miqueas",
+"name": "Miqueas",
+"abbrev": "mi",
+"osis": "Mic",
+"testament": "AT",
+"chapters": 7,
+"hasHebrew": true
+},
+{
+"n": 34,
+"id": "nahum",
+"name": "Nahúm",
+"abbrev": "na",
+"osis": "Nah",
+"testament": "AT",
+"chapters": 3,
+"hasHebrew": true
+},
+{
+"n": 35,
+"id": "habacuc",
+"name": "Habacuc",
+"abbrev": "hk",
+"osis": "Hab",
+"testament": "AT",
+"chapters": 3,
+"hasHebrew": true
+},
+{
+"n": 36,
+"id": "sofonias",
+"name": "Sofonías",
+"abbrev": "zp",
+"osis": "Zeph",
+"testament": "AT",
+"chapters": 3,
+"hasHebrew": true
+},
+{
+"n": 37,
+"id": "hageo",
+"name": "Hageo",
+"abbrev": "hg",
+"osis": "Hag",
+"testament": "AT",
+"chapters": 2,
+"hasHebrew": true
+},
+{
+"n": 38,
+"id": "zacarias",
+"name": "Zacarías",
+"abbrev": "zc",
+"osis": "Zech",
+"testament": "AT",
+"chapters": 14,
+"hasHebrew": true
+},
+{
+"n": 39,
+"id": "malaquias",
+"name": "Malaquías",
+"abbrev": "ml",
+"osis": "Mal",
+"testament": "AT",
+"chapters": 4,
+"hasHebrew": true
+},
+{
+"n": 40,
+"id": "mateo",
+"name": "Mateo",
+"abbrev": "mt",
+"osis": "Matt",
+"testament": "NT",
+"chapters": 28,
+"hasHebrew": false
+},
+{
+"n": 41,
+"id": "marcos",
+"name": "Marcos",
+"abbrev": "mk",
+"osis": "Mark",
+"testament": "NT",
+"chapters": 16,
+"hasHebrew": false
+},
+{
+"n": 42,
+"id": "lucas",
+"name": "Lucas",
+"abbrev": "lk",
+"osis": "Luke",
+"testament": "NT",
+"chapters": 24,
+"hasHebrew": false
+},
+{
+"n": 43,
+"id": "juan",
+"name": "Juan",
+"abbrev": "jo",
+"osis": "John",
+"testament": "NT",
+"chapters": 21,
+"hasHebrew": false
+},
+{
+"n": 44,
+"id": "hechos",
+"name": "Hechos",
+"abbrev": "act",
+"osis": "Acts",
+"testament": "NT",
+"chapters": 28,
+"hasHebrew": false
+},
+{
+"n": 45,
+"id": "romanos",
+"name": "Romanos",
+"abbrev": "rm",
+"osis": "Rom",
+"testament": "NT",
+"chapters": 16,
+"hasHebrew": false
+},
+{
+"n": 46,
+"id": "1-corintios",
+"name": "1 Corintios",
+"abbrev": "1co",
+"osis": "1Cor",
+"testament": "NT",
+"chapters": 16,
+"hasHebrew": false
+},
+{
+"n": 47,
+"id": "2-corintios",
+"name": "2 Corintios",
+"abbrev": "2co",
+"osis": "2Cor",
+"testament": "NT",
+"chapters": 13,
+"hasHebrew": false
+},
+{
+"n": 48,
+"id": "galatas",
+"name": "Gálatas",
+"abbrev": "gl",
+"osis": "Gal",
+"testament": "NT",
+"chapters": 6,
+"hasHebrew": false
+},
+{
+"n": 49,
+"id": "efesios",
+"name": "Efesios",
+"abbrev": "eph",
+"osis": "Eph",
+"testament": "NT",
+"chapters": 6,
+"hasHebrew": false
+},
+{
+"n": 50,
+"id": "filipenses",
+"name": "Filipenses",
+"abbrev": "ph",
+"osis": "Phil",
+"testament": "NT",
+"chapters": 4,
+"hasHebrew": false
+},
+{
+"n": 51,
+"id": "colosenses",
+"name": "Colosenses",
+"abbrev": "cl",
+"osis": "Col",
+"testament": "NT",
+"chapters": 4,
+"hasHebrew": false
+},
+{
+"n": 52,
+"id": "1-tesalonicenses",
+"name": "1 Tesalonicenses",
+"abbrev": "1ts",
+"osis": "1Thess",
+"testament": "NT",
+"chapters": 5,
+"hasHebrew": false
+},
+{
+"n": 53,
+"id": "2-tesalonicenses",
+"name": "2 Tesalonicenses",
+"abbrev": "2ts",
+"osis": "2Thess",
+"testament": "NT",
+"chapters": 3,
+"hasHebrew": false
+},
+{
+"n": 54,
+"id": "1-timoteo",
+"name": "1 Timoteo",
+"abbrev": "1tm",
+"osis": "1Tim",
+"testament": "NT",
+"chapters": 6,
+"hasHebrew": false
+},
+{
+"n": 55,
+"id": "2-timoteo",
+"name": "2 Timoteo",
+"abbrev": "2tm",
+"osis": "2Tim",
+"testament": "NT",
+"chapters": 4,
+"hasHebrew": false
+},
+{
+"n": 56,
+"id": "tito",
+"name": "Tito",
+"abbrev": "tt",
+"osis": "Titus",
+"testament": "NT",
+"chapters": 3,
+"hasHebrew": false
+},
+{
+"n": 57,
+"id": "filemon",
+"name": "Filemón",
+"abbrev": "phm",
+"osis": "Phlm",
+"testament": "NT",
+"chapters": 1,
+"hasHebrew": false
+},
+{
+"n": 58,
+"id": "hebreos",
+"name": "Hebreos",
+"abbrev": "hb",
+"osis": "Heb",
+"testament": "NT",
+"chapters": 13,
+"hasHebrew": false
+},
+{
+"n": 59,
+"id": "santiago",
+"name": "Santiago",
+"abbrev": "jm",
+"osis": "Jas",
+"testament": "NT",
+"chapters": 5,
+"hasHebrew": false
+},
+{
+"n": 60,
+"id": "1-pedro",
+"name": "1 Pedro",
+"abbrev": "1pe",
+"osis": "1Pet",
+"testament": "NT",
+"chapters": 5,
+"hasHebrew": false
+},
+{
+"n": 61,
+"id": "2-pedro",
+"name": "2 Pedro",
+"abbrev": "2pe",
+"osis": "2Pet",
+"testament": "NT",
+"chapters": 3,
+"hasHebrew": false
+},
+{
+"n": 62,
+"id": "1-juan",
+"name": "1 Juan",
+"abbrev": "1jo",
+"osis": "1John",
+"testament": "NT",
+"chapters": 5,
+"hasHebrew": false
+},
+{
+"n": 63,
+"id": "2-juan",
+"name": "2 Juan",
+"abbrev": "2jo",
+"osis": "2John",
+"testament": "NT",
+"chapters": 1,
+"hasHebrew": false
+},
+{
+"n": 64,
+"id": "3-juan",
+"name": "3 Juan",
+"abbrev": "3jo",
+"osis": "3John",
+"testament": "NT",
+"chapters": 1,
+"hasHebrew": false
+},
+{
+"n": 65,
+"id": "judas",
+"name": "Judas",
+"abbrev": "jd",
+"osis": "Jude",
+"testament": "NT",
+"chapters": 1,
+"hasHebrew": false
+},
+{
+"n": 66,
+"id": "apocalipsis",
+"name": "Apocalipsis",
+"abbrev": "re",
+"osis": "Rev",
+"testament": "NT",
+"chapters": 22,
+"hasHebrew": false
+}
+]

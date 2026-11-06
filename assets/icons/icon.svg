@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Biblia de Estudio">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2d6a4f"/>
+      <stop offset="1" stop-color="#1b4332"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <!-- libro abierto -->
+  <path d="M256 150c-36-26-86-34-132-24-10 2-18 11-18 22v188c0 13 12 22 24 19 40-9 84-2 118 20 2 1 4 2 8 2s6-1 8-2c34-22 78-29 118-20 12 3 24-6 24-19V148c0-11-8-20-18-22-46-10-96-2-132 24z" fill="#fffdf8"/>
+  <path d="M256 150v225" fill="none" stroke="#b7791f" stroke-width="10" stroke-linecap="round"/>
+  <!-- estrella/luz -->
+  <g fill="#b7791f">
+    <path d="M256 92l9 20 22 2-16 15 5 22-20-11-20 11 5-22-16-15 22-2z"/>
+  </g>
+  <!-- letra alef hebrea sutil -->
+  <text x="190" y="300" font-family="serif" font-size="70" fill="#2d6a4f" opacity="0.5">א</text>
+  <text x="270" y="330" font-family="serif" font-size="56" fill="#1b4332" opacity="0.45">R</text>
+</svg>

@@ -1,95 +1,93 @@
-# Bible: XML and JSON
-Do you want to create a Bible based app? What about an API for Bible verses search? Now you can do this, using sources in your very own language! The main objective of this project is to allow people to create Bible related apps using XML and JSON. Do you like this idea? Help us to go even further. **Support this project! :)**
+# 📖 Biblia de Estudio
 
-[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=A9FM66AQT672L&lc=US&item_name=Bible%20Sources&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
+Aplicación web (PWA) para **estudiar la Biblia de forma profunda y sencilla**: lectura
+cómoda, comparación de versiones y análisis del **hebreo palabra por palabra** con
+números de Strong, diccionario y concordancia. Funciona en el celular y en la
+computadora, se instala desde el navegador y **funciona sin conexión**.
 
-## How were the files built?
-The source files were generated using a Python based crawler. Therefore, these files may contain minor issues related to encoding and syntax.
+> Objetivo: que cualquiera pueda acercarse al texto original —no solo a una
+> traducción— de manera dinámica, visual y fácil de entender.
 
-## Which languages and versions are covered by the project?
-#### Arabic
-* The Arabic Bible (ar_svd) 
+## ✨ Funciones
 
-#### Chinese
-* Chinese Union Version (zh_cuv)
-* New Chinese Version (zh_ncv) 
+- **Leer** cualquiera de los 66 libros, con navegación por libro y capítulo.
+- **Interlineal hebreo** (Antiguo Testamento): activa el botón **עב** y ve cada
+  versículo palabra por palabra en hebreo, con su número de Strong.
+- **Estudio de palabra**: toca una palabra hebrea y abre su entrada del diccionario
+  Strong (lema, transliteración, pronunciación, definición y origen) más **todas sus
+  apariciones** en el Antiguo Testamento.
+- **Comparar versiones**: hasta 4 versiones lado a lado (incluido el texto hebreo).
+- **Buscar** cualquier palabra o frase en el texto en español.
+- **Versículo del día**, modo claro/oscuro y tamaño de letra ajustable.
+- **PWA**: instalable y disponible sin conexión.
 
-#### German
-* Schlachter (de_schlachter)
+## 📚 Fuentes de datos (todas de licencia abierta)
 
-#### Greek
-* Modern Greek (el_greek)
+| Recurso | Fuente | Licencia |
+|---|---|---|
+| Texto en español | **Reina Valera 1909** | Dominio público |
+| Antiguo Testamento en hebreo (morfología + Strong) | Códice de Leningrado · [OpenScriptures MorphHB](https://github.com/openscriptures/morphhb) | CC BY 4.0 |
+| Diccionarios Strong (hebreo y griego) | [OpenScriptures Strong's](https://github.com/openscriptures/strongs) | Dominio público |
+| Otras 18 versiones (para comparar) | Proyecto original *Bible: XML and JSON* | CC BY-NC |
 
-#### English
-* Basic English (en_bbe)
-* King James Version (en_kjv) 
+> **Nota sobre la Reina Valera 1960:** la RV1960 tiene derechos de autor (Sociedades
+> Bíblicas Unidas) y **no puede distribuirse libremente**. Por eso la app usa la
+> **RV1909** (dominio público), que es de la misma familia Reina-Valera y de lenguaje
+> casi idéntico. Si en el futuro se obtiene una licencia, la RV1960 se puede añadir.
 
-#### Esperanto
-* Esperanto (eo_esperanto)
+## 🗂️ Estructura del proyecto
 
-#### Spanish
-* Reina Valera (es_rvr)
-
-#### Finnish
-* Finnish Bible (fi_finnish)
-* Pyhä Raamattu (fi_pr)
-
-#### French
-* Le Bible de I'Épée (fr_apee)
-
-#### Korean
-* Korean Version (ko_ko)
-
-#### Portuguese
-* Almeida Revisada Imprensa Bíblica (pt_aa) 
-* Almeida Corrigida e Revisada Fiel (pt_acf) 
-* Nova Versão Internacional (pt_nvi) 
-
-#### Romanian
-* Versiunea Dumitru Cornilescu (ro_cornilescu)
-
-#### Russian
-* Синодальный перевод (ru_synodal)
-
-#### Vietnamese
-* Tiếng Việt (vi_vietnamese)
-
-## How the files are structured?
-### XML
-The XML files are encoded using UTF-8 and built in the following structure:
-```xml
-<book>
-  <chapter>
-    <verse>Texto</verse>
-  </chapter>
-</book>
+```
+index.html                 # app (punto de entrada; se sirve en la raíz)
+manifest.webmanifest       # configuración PWA
+sw.js                      # service worker (uso sin conexión)
+assets/
+  css/app.css              # estilos
+  js/{app,data,store}.js   # lógica de la app (ES modules)
+  icons/                   # iconos PWA
+data/                      # base de datos generada (ver más abajo)
+  books.json               # metadatos de los 66 libros
+  es/<libro>.json          # texto RV1909 por libro
+  hebrew/<libro>.json      # AT hebreo interlineal (palabra + Strong + morfología)
+  strongs_he.json          # diccionario Strong hebreo
+  strongs_gr.json          # diccionario Strong griego
+  concordance_he.json      # concordancia hebrea (Strong -> apariciones)
+  versions.json            # catálogo de versiones para comparar
+json/ , xml/               # versiones bíblicas originales (varios idiomas)
+tools/build_data.py        # pipeline reproducible que genera data/
 ```
 
-### JSON
-The JSON files are also encoded using UTF-8 and built in the following structure:
-```javascript
-[
-	{
-	"abbrev" : "abbrev"
-	"book" : "name"
-	"chapters": 
-		[
-			["Verse 1", "Verse 2", "Verse 3", "..."],
-			["Verse 1", "Verse 2", "Verse 3", "..."],
-			["Verse 1", "Verse 2", "Verse 3", "..."]
-		]
-	}
-]
+## 🔧 Regenerar la base de datos
+
+Todos los activos de `data/` se generan de forma reproducible:
+
+```bash
+python3 tools/build_data.py          # descarga fuentes y construye todo
+python3 tools/build_data.py --no-net # reconstruye solo lo local (sin descargar)
 ```
-You can get the number of the chapter and verse using the array index.
 
-### What about the license and the copyrights?
-This project is distributed under the [Creative Commons BY-NC](https://creativecommons.org/licenses/by-nc/2.0/br/) license. All the Bible versions are property of their respective owners. All rights reserved to the owners.
+## ▶️ Probar en local
 
-### How can I help the project?
-You can review the code, enhance the structures or work on new versions. Every help is welcome! :)
+```bash
+python3 -m http.server 8777
+# abre http://localhost:8777
+```
 
-### Can I donate to the project?
-Yes, you can! You can give a volunteer donation by [PayPal](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=A9FM66AQT672L&lc=US&item_name=Bible%20Sources&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted).
+## 🚀 Publicar gratis (GitHub Pages)
 
-[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=A9FM66AQT672L&lc=US&item_name=Bible%20Sources&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
+1. En GitHub: **Settings → Pages**.
+2. En *Source* elige la rama de este proyecto y la carpeta **/(root)**.
+3. Guarda. En unos minutos tendrás la app publicada en una URL pública, gratis.
+
+## 🗺️ Hoja de ruta
+
+- Interlineal **griego** del Nuevo Testamento (con Strong).
+- Definiciones Strong **traducidas al español**.
+- Vocabulario hebreo con **repetición espaciada** (tipo tarjetas).
+- Planes de lectura, racha diaria y logros.
+- Notas y resaltados del usuario.
+
+## 📄 Licencia
+
+Código bajo los términos del repositorio. Cada versión bíblica y recurso pertenece a
+sus respectivos autores; ver la tabla de fuentes.
