@@ -140,6 +140,43 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .hw__s { font-family: var(--ff-ui); font-size: .62rem; color: var(--strong); direction: ltr; }
 .iln__hint { margin-top: .9rem; color: var(--text-soft); font-size: .85rem; text-align: center; }
 
+/* ---- Guía de estudio paso a paso ---- */
+.study-intro { color: var(--text-soft); font-size: .95rem; margin: .4rem 0 1rem; line-height: 1.5; }
+.explainer { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 1rem; }
+.explainer summary { cursor: pointer; padding: .8rem .9rem; font-weight: 700; color: var(--accent-soft); list-style: none; }
+.explainer summary::-webkit-details-marker { display: none; }
+.explainer__b { padding: 0 .9rem .6rem; }
+.explainer__b p { font-size: .92rem; line-height: 1.55; margin: .5rem 0; color: var(--text); }
+.step { border: 1px solid var(--line); border-radius: 14px; margin-bottom: .7rem; overflow: hidden; background: var(--surface); }
+.step[open] { box-shadow: var(--shadow); }
+.step > summary { cursor: pointer; display: flex; align-items: center; gap: .7rem; padding: .8rem .85rem; list-style: none; background: var(--surface-2); }
+.step > summary::-webkit-details-marker { display: none; }
+.step__n { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: .95rem; }
+.step__tt { flex: 1; display: flex; flex-direction: column; line-height: 1.2; }
+.step__tt b { font-size: 1rem; }
+.step__tt small { color: var(--text-soft); font-size: .8rem; }
+.step__chev { color: var(--text-soft); transition: transform .2s; }
+.step[open] .step__chev { transform: rotate(180deg); }
+.step__b { padding: .9rem .85rem 1rem; }
+.step-q { font-size: .96rem; line-height: 1.55; color: var(--text); margin: 0 0 .7rem; }
+.note { margin-top: .4rem; }
+.note__lab { font-size: .78rem; color: var(--text-soft); font-weight: 700; margin-bottom: .3rem; }
+.note__ta { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2);
+  color: var(--text); font-family: var(--ff-ui); font-size: 1rem; padding: .6rem .7rem; resize: vertical; line-height: 1.5; }
+.note__ta:focus { outline: 2px solid var(--accent-soft); outline-offset: 1px; }
+.legend { font-size: .85rem; color: var(--text-soft); background: var(--surface-2); border: 1px dashed var(--line);
+  border-radius: 10px; padding: .5rem .7rem; margin-bottom: .7rem; line-height: 1.5; }
+.step-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .3rem; }
+
+/* etiquetas del diccionario de palabra */
+.wlab { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-soft); margin-top: .6rem; }
+.wcode { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: .6rem .75rem; margin-bottom: .9rem; }
+.wcode__top { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; }
+.wcode__badge { font-size: .82rem; font-weight: 800; color: var(--gold); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: .15rem .6rem; }
+.wcode__t { font-weight: 700; font-size: .9rem; }
+.wcode p { margin: 0; font-size: .88rem; line-height: 1.5; }
+
 /* estudiar palabra por palabra (en panel) */
 .study-es { font-family: var(--ff-read); font-size: 1.08rem; line-height: 1.6; color: var(--text);
   background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: .7rem .85rem; }

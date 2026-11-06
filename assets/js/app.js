@@ -269,15 +269,14 @@ const LANG_ES = {
 };
 
 async function openStudy(b, c, v, esText) {
-  $("#panelTitle").textContent = `${b.name} ${c}:${v} — Estudio`;
+  const ref = `${b.id}:${c}:${v}`;
+  $("#panelTitle").textContent = `${b.name} ${c}:${v} — Guía de estudio`;
   const body = $("#panelBody"); body.replaceChildren(loadingEl());
   $("#panel").hidden = false;
   try {
     const [heb, dict, esMap, vers] = await Promise.all([
       Data.hebrew(b.id), Data.strongsHe(), Data.strongsHeEs().catch(() => ({})), Data.versions(),
     ]);
-
-    // opciones: primero español, hebreo, inglés; luego el resto
     const core = [
       { id: "es_rvr", name: "Reina Valera 1909", lang: "Español" },
       { id: "he_wlc", name: "Hebreo (original)", lang: "Hebreo", rtl: true },
@@ -286,76 +285,168 @@ async function openStudy(b, c, v, esText) {
     const rest = vers.filter((x) => x.id !== "es_rvr" && x.id !== "en_kjv")
       .map((x) => ({ id: x.id, name: x.name, lang: LANG_ES[x.lang] || x.lang, file: x.file }));
     const options = [...core, ...rest];
-
     let picks = Store.get("compare").filter((id) => options.some((o) => o.id === id));
     if (!picks.length) picks = ["es_rvr", "he_wlc", "en_kjv"];
     Store.set("compare", picks);
-
     const words = (heb.chapters[c - 1] || [])[v - 1] || [];
+
     const frag = document.createDocumentFragment();
+    frag.appendChild(explainerCard());
+    frag.appendChild(el("p", "study-intro", "Estudia este versículo en 6 pasos. Toca cada paso para abrirlo. No necesitas saber hebreo: la app te explica todo."));
 
-    // ---- bloque de comparación (idiomas) ----
-    frag.appendChild(el("h4", "cmp-sel-h", "El versículo en:"));
-    const rows = el("div"); rows.id = "cmpRows"; frag.appendChild(rows);
+    // Paso 1 — Lee y observa
+    const s1 = el("div");
+    s1.appendChild(el("div", "study-es", `<span class="verse__n">${v}</span>${esc(esText)}`));
+    s1.appendChild(el("p", "step-q", "Léelo despacio y pregúntate: ¿Quién habla o actúa? ¿Qué sucede? ¿Hay palabras que se repiten o te llaman la atención?"));
+    s1.appendChild(noteBox(ref, "obs", "Escribe lo que observas…"));
+    frag.appendChild(stepCard(1, "Lee y observa", "¿Qué dice el texto?", s1, true));
 
-    const det = el("details", "cmp-add");
-    det.appendChild(el("summary", null, "＋ Elegir idiomas y versiones"));
-    const sel = el("div", "cmp-pick");
-    options.forEach((o) => {
-      const chip = el("button", "vchip");
-      const paint = () => {
-        const on = Store.get("compare").includes(o.id);
-        chip.className = "vchip" + (on ? " on" : "");
-        chip.innerHTML = `<span class="vchip__c">${on ? "✓" : "＋"}</span> ${esc(o.lang)}${o.id !== "he_wlc" ? ` <small>${esc(o.name)}</small>` : ""}`;
-      };
-      chip.onclick = () => {           // NO cierra la pantalla: solo actualiza filas
-        let arr = Store.get("compare").slice();
-        if (arr.includes(o.id)) {
-          if (arr.length <= 1) { toast("Deja al menos una versión"); return; }
-          arr = arr.filter((x) => x !== o.id);
-        } else {
-          if (arr.length >= 5) { toast("Máximo 5 a la vez"); return; }
-          arr.push(o.id);
-        }
-        Store.set("compare", arr);
-        paint(); drawStudyRows(b, c, v, options);
-      };
-      paint();
-      sel.appendChild(chip);
-    });
-    det.appendChild(sel);
-    frag.appendChild(det);
+    // Paso 2 — El original (hebreo)
+    const s2 = el("div");
+    s2.appendChild(el("p", "step-q", "Aquí ves cada palabra del texto hebreo con su significado en español. Fíjate en las palabras clave; toca cualquiera para ver más."));
+    s2.appendChild(legendCard());
+    s2.appendChild(buildWordByWord(words, dict, esMap));
+    frag.appendChild(stepCard(2, "Mira el original", "Las palabras en hebreo y su significado", s2, false));
 
-    // ---- palabra por palabra ----
-    frag.appendChild(el("h4", "cmp-sel-h", "Palabra por palabra · hebreo → español"));
-    const list = el("div", "sw-list");
-    words.forEach((w) => {
-      if (!w.h) return;
-      const code = w.s ? "H" + w.s : null;
-      const codeA = w.sa ? "H" + w.sa : null;
-      const entry = code ? dict[code] : null;
-      let mean = (code && esMap[code]) || (codeA && esMap[codeA]) || "";
-      let enOnly = false;
-      if (!mean && entry) { mean = entry.def || entry.kjv || ""; enOnly = true; }
-      if (mean.length > 95) mean = mean.slice(0, 95) + "…";
-      const translit = entry ? entry.xlit : "";
-      const row = el("div", "sw-word");
-      row.innerHTML =
-        `<span class="sw-word__heb">${esc(w.h)}</span>` +
-        `<span class="sw-word__mid">` +
-          (translit ? `<span class="sw-word__translit">${esc(translit)}</span>` : "") +
-          `<span class="sw-word__mean">${esc(mean || "—")}${enOnly ? ' <i class="en">(ingl.)</i>' : ""}</span>` +
-        `</span>` +
-        (code ? `<span class="sw-word__code">${code} ›</span>` : "");
-      if (code) row.onclick = () => openWord(code, codeA);
-      list.appendChild(row);
-    });
-    frag.appendChild(list);
-    frag.appendChild(el("p", "iln__hint", "👆 Toca una palabra para ver todo su significado y dónde más aparece"));
+    // Paso 3 — Compara
+    const s3 = el("div");
+    s3.appendChild(el("p", "step-q", "El mismo versículo en español, hebreo e inglés. Comparar versiones ayuda a entenderlo mejor."));
+    const rows = el("div"); rows.id = "cmpRows"; s3.appendChild(rows);
+    s3.appendChild(compareSelector(b, c, v, options));
+    frag.appendChild(stepCard(3, "Compara versiones", "El versículo en varios idiomas", s3, false));
+
+    // Paso 4 — Interpreta
+    const s4 = el("div");
+    s4.appendChild(el("p", "step-q", "Con lo que observaste y el significado de las palabras: ¿Qué quiso decir el autor a sus primeros lectores? ¿Qué nos enseña sobre Dios?"));
+    s4.appendChild(noteBox(ref, "int", "Escribe qué significa…"));
+    frag.appendChild(stepCard(4, "¿Qué significa?", "Interpretación", s4, false));
+
+    // Paso 5 — Aplica
+    const s5 = el("div");
+    s5.appendChild(el("p", "step-q", "¿Qué debo creer, cambiar o hacer hoy por lo que dice este versículo? Escribe una acción concreta."));
+    s5.appendChild(noteBox(ref, "app", "Escribe cómo lo aplicas a tu vida…"));
+    frag.appendChild(stepCard(5, "¿Qué hago yo?", "Aplicación a tu vida", s5, false));
+
+    // Paso 6 — Ora y guarda
+    const s6 = el("div");
+    s6.appendChild(el("p", "step-q", "Responde a Dios en oración por lo que aprendiste. Y guarda este versículo para recordarlo:"));
+    const acts = el("div", "step-actions");
+    const favB = el("button", "action");
+    const paintFav = () => {
+      const on = Store.isFavorite(ref);
+      favB.className = "action" + (on ? " on" : "");
+      favB.innerHTML = `<span class="action__i">${on ? "★" : "☆"}</span><span>${on ? "En favoritos" : "Guardar en favoritos"}</span>`;
+    };
+    favB.onclick = () => { const on = Store.toggleFavorite(ref); updateVerseDom(ref); updateMarksBadge(); paintFav(); toast(on ? "Guardado ⭐" : "Quitado"); };
+    paintFav();
+    const hlB = el("button", "action");
+    const paintHl = () => {
+      const on = Store.getHighlight(ref) === "amarillo";
+      hlB.className = "action" + (on ? " on" : "");
+      hlB.innerHTML = `<span class="action__i">🎨</span><span>${on ? "Resaltado" : "Resaltar"}</span>`;
+    };
+    hlB.onclick = () => { const on = Store.getHighlight(ref) === "amarillo"; Store.setHighlight(ref, on ? null : "amarillo"); updateVerseDom(ref); updateMarksBadge(); paintHl(); toast(on ? "Resaltado quitado" : "Resaltado ✓"); };
+    paintHl();
+    acts.append(favB, hlB);
+    s6.appendChild(acts);
+    frag.appendChild(stepCard(6, "Ora y guarda", "Responde y recuerda", s6, false));
 
     body.replaceChildren(frag);
     await drawStudyRows(b, c, v, options);
   } catch (e) { body.replaceChildren(errorEl(e)); }
+}
+
+/* --- piezas de la guía de estudio --- */
+function explainerCard() {
+  const d = el("details", "explainer");
+  d.appendChild(el("summary", null, "❓ ¿Primera vez? Qué significan estas cosas"));
+  const body = el("div", "explainer__b");
+  body.innerHTML =
+    "<p><b>¿Por qué el hebreo?</b> El Antiguo Testamento se escribió en hebreo. Mirar la palabra original te ayuda a entender mejor lo que quiso decir el autor, más allá de la traducción.</p>" +
+    "<p><b>La palabra en hebreo</b> se lee de derecha a izquierda (ejemplo: הָיָה).</p>" +
+    "<p><b>La pronunciación</b> (en <i>cursiva</i>, como «háyah») te dice cómo suena esa palabra.</p>" +
+    "<p><b>El código Strong</b> (como «H1961») es un número que identifica cada palabra hebrea. Con él puedes ver su significado exacto y todos los versículos donde aparece, aunque no sepas hebreo.</p>" +
+    "<p><b>El significado</b> es qué quiere decir esa palabra en español.</p>";
+  d.appendChild(body);
+  return d;
+}
+function stepCard(num, title, subtitle, bodyEl, open) {
+  const d = el("details", "step"); if (open) d.open = true;
+  const sum = el("summary");
+  sum.innerHTML = `<span class="step__n">${num}</span><span class="step__tt"><b>${esc(title)}</b><small>${esc(subtitle)}</small></span><span class="step__chev">▾</span>`;
+  d.appendChild(sum);
+  const wrap = el("div", "step__b");
+  wrap.appendChild(bodyEl);
+  d.appendChild(wrap);
+  return d;
+}
+function noteBox(ref, key, placeholder) {
+  const wrap = el("div", "note");
+  wrap.appendChild(el("div", "note__lab", "📝 Tu nota"));
+  const ta = document.createElement("textarea");
+  ta.className = "note__ta"; ta.placeholder = placeholder; ta.rows = 3;
+  ta.value = Store.getNote(ref, key);
+  ta.addEventListener("input", () => Store.setNote(ref, key, ta.value.trim()));
+  wrap.appendChild(ta);
+  return wrap;
+}
+function legendCard() {
+  return el("div", "legend",
+    "En cada tarjeta: <b>palabra hebrea</b> · <i>cómo suena</i> · <b>significado en español</b> · su <b>código</b>. Toca una tarjeta para ver todo.");
+}
+function buildWordByWord(words, dict, esMap) {
+  const list = el("div", "sw-list");
+  words.forEach((w) => {
+    if (!w.h) return;
+    const code = w.s ? "H" + w.s : null;
+    const codeA = w.sa ? "H" + w.sa : null;
+    const entry = code ? dict[code] : null;
+    let mean = (code && esMap[code]) || (codeA && esMap[codeA]) || "";
+    let enOnly = false;
+    if (!mean && entry) { mean = entry.def || entry.kjv || ""; enOnly = true; }
+    if (mean.length > 95) mean = mean.slice(0, 95) + "…";
+    const translit = entry ? entry.xlit : "";
+    const row = el("div", "sw-word");
+    row.innerHTML =
+      `<span class="sw-word__heb">${esc(w.h)}</span>` +
+      `<span class="sw-word__mid">` +
+        (translit ? `<span class="sw-word__translit">${esc(translit)}</span>` : "") +
+        `<span class="sw-word__mean">${esc(mean || "—")}${enOnly ? ' <i class="en">(ingl.)</i>' : ""}</span>` +
+      `</span>` +
+      (code ? `<span class="sw-word__code">${code} ›</span>` : "");
+    if (code) row.onclick = () => openWord(code, codeA);
+    list.appendChild(row);
+  });
+  return list;
+}
+function compareSelector(b, c, v, options) {
+  const det = el("details", "cmp-add");
+  det.appendChild(el("summary", null, "＋ Elegir idiomas y versiones"));
+  const sel = el("div", "cmp-pick");
+  options.forEach((o) => {
+    const chip = el("button", "vchip");
+    const paint = () => {
+      const on = Store.get("compare").includes(o.id);
+      chip.className = "vchip" + (on ? " on" : "");
+      chip.innerHTML = `<span class="vchip__c">${on ? "✓" : "＋"}</span> ${esc(o.lang)}${o.id !== "he_wlc" ? ` <small>${esc(o.name)}</small>` : ""}`;
+    };
+    chip.onclick = () => {
+      let arr = Store.get("compare").slice();
+      if (arr.includes(o.id)) {
+        if (arr.length <= 1) { toast("Deja al menos una versión"); return; }
+        arr = arr.filter((x) => x !== o.id);
+      } else {
+        if (arr.length >= 5) { toast("Máximo 5 a la vez"); return; }
+        arr.push(o.id);
+      }
+      Store.set("compare", arr);
+      paint(); drawStudyRows(b, c, v, options);
+    };
+    paint();
+    sel.appendChild(chip);
+  });
+  det.appendChild(sel);
+  return det;
 }
 
 async function drawStudyRows(b, c, v, options) {
@@ -399,21 +490,36 @@ async function openWord(code, augmented) {
     const occ = conc[code] || (augmented && conc[augmented]) || { n: 0, refs: [] };
 
     const frag = document.createDocumentFragment();
+    // Cabecera: palabra hebrea y pronunciación, cada una ETIQUETADA
     const head = el("div", "wh");
+    const pron = entry ? (entry.xlit + (entry.pron ? ` · ${entry.pron}` : "")) : "";
     head.innerHTML =
+      `<div class="wlab">Palabra en hebreo</div>` +
       `<div class="wh__h">${entry ? esc(entry.lemma) : "—"}</div>` +
-      `<div class="wh__x">${entry ? esc(entry.xlit) : ""} ${entry && entry.pron ? "· <i>" + esc(entry.pron) + "</i>" : ""}</div>` +
-      `<span class="wh__code">${code}</span>`;
+      (pron ? `<div class="wlab">Cómo se pronuncia</div><div class="wh__x"><i>${esc(pron)}</i></div>` : "");
     frag.appendChild(head);
 
-    if (defEs) frag.appendChild(wsec("Significado", esc(defEs), "wsec--es"));
-    if (entry) {
-      frag.appendChild(wsec(defEs ? "Definición ampliada (Strong, inglés)" : "Definición (Strong, inglés)", esc(entry.def || entry.kjv || "—")));
-      if (entry.deriv) frag.appendChild(wsec("Origen", esc(entry.deriv)));
-    }
+    // Significado en español (lo más importante)
+    if (defEs) frag.appendChild(wsec("Qué significa (en español)", esc(defEs), "wsec--es"));
+    else if (entry) frag.appendChild(wsec("Qué significa", esc(entry.def || entry.kjv || "—"), "wsec--es"));
 
+    // Explicación del código Strong (para que no sea un misterio)
+    const codeBox = el("div", "wcode");
+    codeBox.innerHTML =
+      `<div class="wcode__top"><span class="wcode__badge">${code}</span><span class="wcode__t">Código Strong</span></div>` +
+      `<p class="muted">Es el número que identifica esta palabra hebrea. Con él puedes ver su significado exacto y todos los versículos donde aparece, aunque no sepas hebreo.</p>`;
+    frag.appendChild(codeBox);
+
+    // Detalle adicional en inglés (opcional)
+    if (defEs && entry && (entry.def || entry.kjv))
+      frag.appendChild(wsec("Más detalle (en inglés, opcional)", esc(entry.def || entry.kjv)));
+    if (entry && entry.deriv)
+      frag.appendChild(wsec("De dónde viene la palabra", esc(entry.deriv)));
+
+    // Apariciones, con explicación de para qué sirve
     const occSec = el("div", "wsec");
-    occSec.appendChild(el("h4", null, `Aparece ${occ.n} ${occ.n === 1 ? "vez" : "veces"} en el AT`));
+    occSec.appendChild(el("h4", null, `Dónde más aparece · ${occ.n} ${occ.n === 1 ? "vez" : "veces"}`));
+    occSec.appendChild(el("p", "muted", "Ver la misma palabra en otros versículos te ayuda a entender mejor su sentido. Toca uno para ir allí:"));
     const list = el("div", "occ");
     for (const r of occ.refs.slice(0, 60)) {
       const [bn, c, v] = r.split(".").map(Number);

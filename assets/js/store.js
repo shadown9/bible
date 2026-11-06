@@ -14,6 +14,7 @@ const DEFAULTS = {
   highlights: {},         // "libro:cap:ver" -> color (amarillo|verde|azul|rosa|naranja)
   favorites: [],          // ["libro:cap:ver", ...] (más reciente primero)
   seenTip: false,         // si ya mostramos el consejo inicial
+  notes: {},              // "libro:cap:ver" -> { obs, int, app } notas del estudio guiado
 };
 
 let state = load();
@@ -68,4 +69,13 @@ export const Store = {
   // conteo de marcas (para la pestaña)
   marksCount: () =>
     state.favorites.length + Object.keys(state.highlights).length,
+
+  // --- Notas del estudio guiado ---
+  getNote: (ref, key) => (state.notes[ref] && state.notes[ref][key]) || "",
+  setNote: (ref, key, val) => {
+    if (!state.notes[ref]) state.notes[ref] = {};
+    if (val) state.notes[ref][key] = val;
+    else { delete state.notes[ref][key]; if (!Object.keys(state.notes[ref]).length) delete state.notes[ref]; }
+    persist();
+  },
 };
