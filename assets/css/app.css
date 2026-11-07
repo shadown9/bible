@@ -332,7 +332,18 @@ main#app { max-width: var(--maxw); margin: 0 auto; padding-bottom: 92px; }
 .mem-dot.on { background: var(--gold); }
 /* juego */
 .mem-progress { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-soft); text-align: center; }
+.mem-mode { width: fit-content; max-width: 100%; margin: .15rem auto .35rem; padding: .3rem .95rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-soft) 18%, transparent); color: var(--accent-soft); font-weight: 800; font-size: 1rem; }
 .mem-ref { text-align: center; font-weight: 800; color: var(--accent-soft); font-size: 1.1rem; margin: .2rem 0 .7rem; }
+/* galería de juegos (hace visibles todos los modos) */
+.mem-games { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin: .2rem 0 .3rem; }
+.mem-game { display: flex; align-items: center; gap: .55rem; text-align: left; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px; padding: .6rem .7rem; width: 100%; cursor: pointer; box-shadow: 0 2px 0 var(--line); }
+.mem-game:active { transform: translateY(1px); }
+.mem-game__i { font-size: 1.4rem; line-height: 1; }
+.mem-game__t { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.mem-game__t b { font-size: .9rem; color: var(--text); }
+.mem-game__t small { font-size: .72rem; color: var(--text-soft); }
 .mem-peek { font-family: var(--ff-read); font-size: 1.1rem; line-height: 1.6; background: var(--surface-2); border: 1px solid var(--line);
   border-radius: 12px; padding: .8rem; max-height: 0; overflow: hidden; opacity: 0; transition: all .25s; margin-bottom: 0; }
 .mem-peek.show { max-height: 260px; opacity: 1; padding: .8rem; margin-bottom: .7rem; }

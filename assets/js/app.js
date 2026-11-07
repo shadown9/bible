@@ -846,9 +846,22 @@ async function openMemorize() {
 
     if (deck.length) {
       const q = deck.filter((d) => (d.due || 0) <= dayNum());
+      const practiceRefs = () => (q.length ? q : deck).map((d) => d.ref);
       const go = el("button", "wc-go", due ? `Practicar (${due})` : "Repasar de nuevo");
-      go.onclick = () => startPractice((q.length ? q : deck).map((d) => d.ref));
+      go.onclick = () => startPractice(practiceRefs());
       frag.appendChild(go);
+
+      // Galería de juegos: deja ver y elegir cada modo (antes estaban escondidos).
+      frag.appendChild(el("div", "sec-h", "O elige un juego"));
+      const games = el("div", "mem-games");
+      for (const [mode, icon, title, desc] of MEM_GALLERY) {
+        const card = el("button", "mem-game",
+          `<span class="mem-game__i">${icon}</span>` +
+          `<span class="mem-game__t"><b>${esc(title)}</b><small>${esc(desc)}</small></span>`);
+        card.onclick = () => startPractice(practiceRefs(), mode);
+        games.appendChild(card);
+      }
+      frag.appendChild(games);
 
       frag.appendChild(el("div", "sec-h", "Tus versículos"));
       for (const d of deck) {
@@ -883,21 +896,21 @@ async function openMemorize() {
 // Rondas cortas: practicamos pocos versículos por tanda para que no canse,
 // y ofrecemos «seguir» con los que queden (el bucle adictivo del «una más»).
 const SESSION_MAX = 5;
-async function startPractice(refs) {
+async function startPractice(refs, forceMode) {
   const all = [...refs];
   const queue = all.slice(0, SESSION_MAX);
   const rest = all.slice(SESSION_MAX);
   let i = 0;
   const step = async () => {
-    if (i >= queue.length) return finishPractice(queue.length, rest);
+    if (i >= queue.length) return finishPractice(queue.length, rest, forceMode);
     const ref = queue[i];
     let text = ""; try { text = await verseText(ref); } catch (e) {}
     const m = Store.memAll().find((x) => x.ref === ref);
-    gameCard(ref, text, m ? m.lvl : 0, i, queue.length, () => { Store.memBump(ref); i++; step(); });
+    gameCard(ref, text, m ? m.lvl : 0, i, queue.length, () => { Store.memBump(ref); i++; step(); }, forceMode);
   };
   step();
 }
-function finishPractice(n, rest = []) {
+function finishPractice(n, rest = [], forceMode) {
   Store.streakMark();
   const body = $("#panelBody");
   const d = el("div", "mem-done",
@@ -908,7 +921,7 @@ function finishPractice(n, rest = []) {
   frag.appendChild(d);
   if (rest.length) {
     const more = el("button", "wc-go", `Seguir · ${rest.length} más`);
-    more.onclick = () => startPractice(rest);
+    more.onclick = () => startPractice(rest, forceMode);
     frag.appendChild(more);
   }
   const b = el("button", rest.length ? "mem-peekbtn" : "wc-go", "Volver");
@@ -935,6 +948,13 @@ const MEM_LEVEL_MODES = [
   ["hueco", "letra", "trozos"],      // 4
   ["letra", "hueco"],                // 5 · dominado
 ];
+// Juegos que el usuario puede elegir a mano desde la galería.
+const MEM_GALLERY = [
+  ["arma", "🧩", "Arma el versículo", "Ordena las palabras"],
+  ["trozos", "🧱", "Ordena los trozos", "Reordena las frases"],
+  ["hueco", "⬜", "Rellena los huecos", "Completa lo que falta"],
+  ["letra", "🔤", "Primera letra", "Solo la inicial, de memoria"],
+];
 let lastMode = null;
 function modeForLevel(lvl) {
   const set = MEM_LEVEL_MODES[Math.max(0, Math.min(lvl | 0, 5))];
@@ -951,12 +971,13 @@ function firstLetterMask(w) {
   return w[0] + "·".repeat(Math.min(n - 1, 6));
 }
 
-function gameCard(ref, text, lvl, idx, total, onDone) {
+function gameCard(ref, text, lvl, idx, total, onDone, forceMode) {
   const body = $("#panelBody");
-  const mode = modeForLevel(lvl);
+  const mode = forceMode || modeForLevel(lvl);
   const words = text.split(/\s+/).filter(Boolean);
   const frag = document.createDocumentFragment();
-  frag.appendChild(el("div", "mem-progress", `Versículo ${idx + 1} de ${total} · ${esc(MEM_MODES[mode].name)}`));
+  frag.appendChild(el("div", "mem-progress", `Versículo ${idx + 1} de ${total}`));
+  frag.appendChild(el("div", "mem-mode", esc(MEM_MODES[mode].name)));
   frag.appendChild(el("div", "mem-ref", refName(ref)));
 
   // El texto se ve solo en modo aprendizaje; en el resto, un vistazo rápido.
