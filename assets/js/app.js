@@ -1311,9 +1311,39 @@ function primeVoices() {
     if (!_voices.length) speechSynthesis.onvoiceschanged = () => { _voices = speechSynthesis.getVoices(); };
   } catch (e) {}
 }
-function spanishVoice() {
+function spanishVoices() {
   if (!_voices.length && hasTTS()) { try { _voices = speechSynthesis.getVoices(); } catch (e) {} }
-  return _voices.find((v) => /^es[-_]/i.test(v.lang)) || _voices.find((v) => /(^|[-_])es/i.test(v.lang)) || null;
+  return _voices.filter((v) => /(^|[-_])es/i.test(v.lang));
+}
+// Puntúa una voz para elegir la más natural que tenga el dispositivo.
+function voiceScore(v) {
+  let s = 0; const n = (v.name || "").toLowerCase();
+  if (v.localService === false) s += 3;   // voces de red (p. ej. Google en Android) suelen ser mejores
+  if (/google|natural|neural|premium|enhanced|mejorad|siri|mónica|monica|paulina|jorge|helena|lucia|lucía/.test(n)) s += 2;
+  if (/^es[-_](us|mx|es)/i.test(v.lang)) s += 1;
+  return s;
+}
+function bestVoice() {
+  const list = spanishVoices(); if (!list.length) return null;
+  return [...list].sort((a, b) => voiceScore(b) - voiceScore(a))[0];
+}
+function spanishVoice() {
+  const list = spanishVoices(); if (!list.length) return null;
+  const saved = (Store.get("short") || {}).voiceName;
+  return list.find((v) => v.name === saved) || bestVoice();
+}
+function cycleVoice() {
+  const list = spanishVoices();
+  if (!list.length) { toast("Este dispositivo no tiene voces en español instaladas."); return; }
+  const cur = spanishVoice();
+  let i = list.findIndex((v) => cur && v.name === cur.name);
+  i = (i + 1) % list.length;
+  const v = list[i];
+  const prev = Store.get("short") || {};
+  Store.set("short", { ...prev, voiceName: v.name });
+  toast("Voz: " + (v.name || v.lang));
+  renderShortControls();
+  if (SH.playing) speakCurrent();
 }
 
 function loadShortPrefs() {
@@ -1324,8 +1354,9 @@ function loadShortPrefs() {
   SH.rate = s.rate || 1;
 }
 function saveShortPrefs() {
+  const prev = Store.get("short") || {};
   const book = BOOKS[SH.bi] ? BOOKS[SH.bi].id : "juan";
-  Store.set("short", { book, chapter: SH.c, verse: SH.v, audio: SH.audioOn, repeat: SH.repeat, group: SH.group, rate: SH.rate });
+  Store.set("short", { ...prev, book, chapter: SH.c, verse: SH.v, audio: SH.audioOn, repeat: SH.repeat, group: SH.group, rate: SH.rate });
 }
 
 // Avanza/retrocede un versículo cruzando capítulos y libros. Devuelve {bi,c,v} o null en los extremos.
@@ -1464,6 +1495,13 @@ function renderShortControls() {
     const rt = el("button", "short-btn", "🐢 " + rateLbl);
     rt.title = "Velocidad"; rt.onclick = cycleRate;
     ctl.appendChild(rt);
+
+    const nv = spanishVoices().length;
+    if (nv > 1) {   // solo si hay más de una voz para elegir
+      const vc = el("button", "short-btn", "🗣");
+      vc.title = "Cambiar de voz"; vc.onclick = cycleVoice;
+      ctl.appendChild(vc);
+    }
   } else {
     ctl.appendChild(el("span", "short-ctl__hint", "Lectura silenciosa · toca 🔇 para escuchar"));
   }
@@ -1521,7 +1559,9 @@ function buildVerseSpans(text) {
 }
 function litWord(charIndex) {
   const spans = SH.curSpans; if (!spans) return;
-  const sp = spans.find((s) => charIndex >= s.start && charIndex < s.end);
+  const ci = charIndex - (SH.speakOffset || 0);   // descuenta la referencia leída al inicio
+  if (ci < 0) { clearLit(); return; }              // aún está diciendo la referencia
+  const sp = spans.find((s) => ci >= s.start && ci < s.end);
   if (sp) for (const s of spans) s.el.classList.toggle("lit", s === sp);
 }
 function clearLit() { if (SH.curSpans) for (const s of SH.curSpans) s.el.classList.remove("lit"); }
@@ -1558,12 +1598,18 @@ function bounce() {
 
 function speakCurrent() {
   if (!SH.audioOn) return;
-  cardData(SH.bi, SH.c, SH.v).then(({ text }) => speakText(text)).catch(() => {});
+  cardData(SH.bi, SH.c, SH.v).then(({ ref, text }) => {
+    // Primero dice la referencia (Juan 3, 16) y luego el versículo.
+    const spokenRef = ref.replace(":", ", ");
+    const prefix = spokenRef + ". ";
+    speakText(prefix + text, prefix.length);
+  }).catch(() => {});
 }
-function speakText(text) {
+function speakText(text, offset = 0) {
   if (!hasTTS() || !SH.audioOn || !text) return;
   try { speechSynthesis.cancel(); } catch (e) {}
   clearLit();
+  SH.speakOffset = offset;
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "es-ES"; u.rate = SH.rate;
   const v = spanishVoice(); if (v) u.voice = v;
