@@ -1292,16 +1292,26 @@ const SH = {
   bi: 0, c: 1, v: 1,          // posición actual (índice de libro, cap, versículo)
   audioOn: true,              // audio habilitado (si no, es lectura silenciosa)
   playing: false,             // está leyendo y auto-avanzando
-  repeat: "off",              // off | one | group
-  group: 3,                   // tamaño del grupo en bucle
+  reps: 2,                    // veces que se lee cada versículo antes de avanzar (1,2,3,∞)
+  playCount: 0,               // lecturas ya hechas del versículo actual
   rate: 1,                    // velocidad de lectura
-  gStart: null,               // ancla del grupo {bi,c,v}
-  gIndex: 0,                  // posición dentro del grupo
+  speakOffset: 0,             // caracteres de la referencia leída antes del versículo
   animating: false,
 };
 let shortBuilt = false;
 let _voices = [];
 const RATES = [["0.75", 0.75, "Lento"], ["1", 1, "Normal"], ["1.25", 1.25, "Rápido"]];
+const REPS = [1, 2, 3, Infinity];
+// Iconos SVG monocromos (se ven iguales en todos los dispositivos, sin emojis descoloridos)
+const ICO = {
+  play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>',
+  spk: '<svg viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6L7 10z"/><path d="M15 8.5a4 4 0 010 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  mute: '<svg viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6L7 10z"/><path d="M15 9.5l5 5M20 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  loop: '<svg viewBox="0 0 24 24"><path d="M7 7h8v2.2L18.5 6 15 2.8V5H5v6h2V7zm10 10H9v-2.2L5.5 18 9 21.2V19h10v-6h-2v4z"/></svg>',
+  speed: '<svg viewBox="0 0 24 24"><path d="M12 5a9 9 0 00-7.8 13.6h15.6A9 9 0 0012 5zm1 7.7V9h-2v3.7a2 2 0 102 0z"/></svg>',
+  mic: '<svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M6 11a6 6 0 0012 0h-2a4 4 0 01-8 0zm5 7h2v3h-2z"/></svg>',
+};
 
 function hasTTS() { return typeof window !== "undefined" && "speechSynthesis" in window; }
 function primeVoices() {
@@ -1349,14 +1359,13 @@ function cycleVoice() {
 function loadShortPrefs() {
   const s = Store.get("short") || {};
   SH.audioOn = s.audio !== false;
-  SH.repeat = s.repeat || "off";
-  SH.group = s.group || 3;
+  SH.reps = s.reps === null || s.reps === undefined ? 2 : (s.reps === "inf" ? Infinity : s.reps);
   SH.rate = s.rate || 1;
 }
 function saveShortPrefs() {
   const prev = Store.get("short") || {};
   const book = BOOKS[SH.bi] ? BOOKS[SH.bi].id : "juan";
-  Store.set("short", { ...prev, book, chapter: SH.c, verse: SH.v, audio: SH.audioOn, repeat: SH.repeat, group: SH.group, rate: SH.rate });
+  Store.set("short", { ...prev, book, chapter: SH.c, verse: SH.v, audio: SH.audioOn, reps: SH.reps === Infinity ? "inf" : SH.reps, rate: SH.rate });
 }
 
 // Avanza/retrocede un versículo cruzando capítulos y libros. Devuelve {bi,c,v} o null en los extremos.
@@ -1401,7 +1410,7 @@ async function setShortStart() {
   const es = await Data.es(BOOKS[bi].id);
   let c = Math.min(Math.max(1, s.chapter || 1), es.chapters.length);
   let v = Math.min(Math.max(1, s.verse || 1), es.chapters[c - 1].length);
-  SH.bi = bi; SH.c = c; SH.v = v; SH.gStart = { bi, c, v }; SH.gIndex = 0;
+  SH.bi = bi; SH.c = c; SH.v = v; SH.playCount = 0;
 }
 
 function buildShortUI(view) {
@@ -1469,42 +1478,36 @@ function buildShortUI(view) {
 function renderShortControls() {
   const ctl = $("#shortCtl");
   if (!ctl) return;
-  ctl.replaceChildren();
-  // Audio on/off
-  const aud = el("button", "short-btn" + (SH.audioOn ? " on" : ""), SH.audioOn ? "🔊" : "🔇");
-  aud.title = "Audio"; aud.onclick = toggleAudio;
-  ctl.appendChild(aud);
+  const dock = el("div", "short-dock");
+
+  const aud = el("button", "short-cbtn short-icbtn" + (SH.audioOn ? "" : " off"), SH.audioOn ? ICO.spk : ICO.mute);
+  aud.title = SH.audioOn ? "Apagar audio" : "Encender audio"; aud.onclick = toggleAudio;
+  dock.appendChild(aud);
 
   if (SH.audioOn) {
-    const pp = el("button", "short-btn short-btn--play", SH.playing ? "⏸" : "▶");
+    const repLbl = SH.reps === Infinity ? "∞" : SH.reps + "×";
+    const rep = el("button", "short-cbtn short-cbtn--num", ICO.loop + `<span class="lbl">${repLbl}</span>`);
+    rep.title = "Veces que se lee cada versículo antes de pasar al siguiente"; rep.onclick = cycleReps;
+    dock.appendChild(rep);
+
+    const pp = el("button", "short-cbtn short-cbtn--play short-btn--play", SH.playing ? ICO.pause : ICO.play);
     pp.title = SH.playing ? "Pausa" : "Reproducir"; pp.onclick = playPause;
-    ctl.appendChild(pp);
+    dock.appendChild(pp);
 
-    const repLbl = { off: "🔁 No", one: "🔂 1", group: "🔁 Grupo" }[SH.repeat];
-    const rep = el("button", "short-btn", repLbl);
-    rep.title = "Repetir"; rep.onclick = cycleRepeat;
-    ctl.appendChild(rep);
+    const rate = RATES.find((r) => r[1] === SH.rate) || RATES[1];
+    const rt = el("button", "short-cbtn short-cbtn--num", ICO.speed + `<span class="lbl">${rate[0]}×</span>`);
+    rt.title = "Velocidad: " + rate[2]; rt.onclick = cycleRate;
+    dock.appendChild(rt);
 
-    if (SH.repeat === "group") {
-      const grp = el("button", "short-btn", `${SH.group}×`);
-      grp.title = "Cuántos versículos en el bucle"; grp.onclick = cycleGroup;
-      ctl.appendChild(grp);
-    }
-
-    const rateLbl = (RATES.find((r) => r[1] === SH.rate) || RATES[1])[2];
-    const rt = el("button", "short-btn", "🐢 " + rateLbl);
-    rt.title = "Velocidad"; rt.onclick = cycleRate;
-    ctl.appendChild(rt);
-
-    const nv = spanishVoices().length;
-    if (nv > 1) {   // solo si hay más de una voz para elegir
-      const vc = el("button", "short-btn", "🗣");
+    if (spanishVoices().length > 1) {
+      const vc = el("button", "short-cbtn short-icbtn", ICO.mic);
       vc.title = "Cambiar de voz"; vc.onclick = cycleVoice;
-      ctl.appendChild(vc);
+      dock.appendChild(vc);
     }
   } else {
-    ctl.appendChild(el("span", "short-ctl__hint", "Lectura silenciosa · toca 🔇 para escuchar"));
+    dock.appendChild(el("span", "short-dock__hint", "Lectura silenciosa"));
   }
+  ctl.replaceChildren(dock);
 }
 
 async function showCard(dir) {
@@ -1534,7 +1537,7 @@ async function showCard(dir) {
       card.classList.remove("from-bottom", "from-top");
       old.classList.add(dir > 0 ? "to-top" : "to-bottom");
     });
-    setTimeout(() => { try { old.remove(); } catch (e) {} SH.animating = false; }, 340);
+    setTimeout(() => { try { old.remove(); } catch (e) {} SH.animating = false; }, 520);
   }
   const ref = data.ref;
   const tr = $("#shortTopRef"); if (tr) tr.textContent = ref;
@@ -1586,7 +1589,7 @@ async function userNav(dir) {
   const nx = await moveRef(SH.bi, SH.c, SH.v, dir);
   if (!nx) { bounce(); return; }
   SH.bi = nx.bi; SH.c = nx.c; SH.v = nx.v;
-  SH.gStart = { bi: SH.bi, c: SH.c, v: SH.v }; SH.gIndex = 0;
+  SH.playCount = 0;
   await showCard(dir);
   saveShortPrefs();
   if (SH.audioOn && SH.playing) speakCurrent();
@@ -1621,28 +1624,16 @@ function speakText(text, offset = 0) {
 function onSpeakEnd() {
   pulse(false); clearLit();
   if (!SH.playing || !SH.audioOn) return;
-  if (SH.repeat === "one") { speakCurrent(); return; }
-  if (SH.repeat === "group") { advanceGroup(); return; }
+  SH.playCount++;
+  // repite el mismo versículo hasta completar las repeticiones; luego auto-avanza
+  if (SH.reps === Infinity || SH.playCount < SH.reps) { speakCurrent(); return; }
+  SH.playCount = 0;
   autoForward();
-}
-async function advanceGroup() {
-  if (SH.gIndex < SH.group - 1) {
-    const nx = await moveRef(SH.bi, SH.c, SH.v, 1);
-    if (nx) {
-      SH.bi = nx.bi; SH.c = nx.c; SH.v = nx.v; SH.gIndex++;
-      await showCard(1); saveShortPrefs(); speakCurrent(); return;
-    }
-  }
-  // volver al inicio del grupo
-  const g = SH.gStart || { bi: SH.bi, c: SH.c, v: SH.v };
-  SH.bi = g.bi; SH.c = g.c; SH.v = g.v; SH.gIndex = 0;
-  await showCard(-1); saveShortPrefs(); speakCurrent();
 }
 async function autoForward() {
   const nx = await moveRef(SH.bi, SH.c, SH.v, 1);
   if (!nx) { SH.playing = false; renderShortControls(); return; }
   SH.bi = nx.bi; SH.c = nx.c; SH.v = nx.v;
-  SH.gStart = { bi: SH.bi, c: SH.c, v: SH.v };
   await showCard(1); saveShortPrefs(); speakCurrent();
 }
 
@@ -1651,7 +1642,7 @@ function playPause() {
   SH.playing = !SH.playing;
   if (SH.playing) {
     SH.audioOn = true;
-    SH.gStart = { bi: SH.bi, c: SH.c, v: SH.v }; SH.gIndex = 0;
+    SH.playCount = 0;
     speakCurrent();
   } else {
     try { speechSynthesis.cancel(); } catch (e) {}
@@ -1664,11 +1655,12 @@ function toggleAudio() {
   if (!SH.audioOn) { SH.playing = false; try { speechSynthesis.cancel(); } catch (e) {} pulse(false); clearLit(); }
   renderShortControls(); saveShortPrefs();
 }
-function cycleRepeat() {
-  SH.repeat = SH.repeat === "off" ? "one" : SH.repeat === "one" ? "group" : "off";
+function cycleReps() {
+  const i = REPS.indexOf(SH.reps);
+  SH.reps = REPS[(i + 1) % REPS.length];
+  SH.playCount = 0;
   renderShortControls(); saveShortPrefs();
 }
-function cycleGroup() { SH.group = SH.group >= 4 ? 2 : SH.group + 1; renderShortControls(); saveShortPrefs(); }
 function cycleRate() {
   const i = RATES.findIndex((r) => r[1] === SH.rate);
   SH.rate = RATES[(i + 1) % RATES.length][1];
@@ -1744,7 +1736,7 @@ async function runShortSearch(q) {
 }
 async function shortJump(bi, c, v) {
   SH.bi = bi; SH.c = c; SH.v = v;
-  SH.gStart = { bi, c, v }; SH.gIndex = 0;
+  SH.playCount = 0;
   await showCard(0); saveShortPrefs();
   if (SH.audioOn && SH.playing) speakCurrent();
 }
