@@ -496,6 +496,9 @@ html.short-mode, html.short-mode body { overflow: hidden; height: 100%; }
 .short-ref { font-weight: 800; font-size: 1rem; letter-spacing: .02em;
   background: rgba(255,255,255,.18); display: inline-block; padding: .3rem .95rem; border-radius: 999px; margin-bottom: 1.2rem; }
 .short-text { font-family: var(--ff-read); font-size: clamp(1.5rem, 6.2vw, 2.25rem); line-height: 1.5; font-weight: 500; }
+.short-text .sw { transition: background .12s, color .12s; border-radius: .22rem; padding: 0 .04em; }
+.short-text .sw.lit { background: rgba(255,255,255,.9); color: var(--accent); }
+.short-ic.on { background: rgba(255,255,255,.26); }
 .short-tap { margin-top: 1.5rem; font-size: .78rem; opacity: .55; }
 .short-card.speaking .short-ref { animation: shPulse 1.5s ease-in-out infinite; }
 @keyframes shPulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(255,255,255,.35) } 50%{ box-shadow: 0 0 0 .5rem rgba(255,255,255,0) } }

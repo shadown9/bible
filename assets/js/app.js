@@ -1378,6 +1378,7 @@ function buildShortUI(view) {
     `<div class="short-top">` +
       `<button class="short-ic" id="shortExit" aria-label="Salir">✕</button>` +
       `<div class="short-top__ref" id="shortTopRef"></div>` +
+      `<button class="short-ic" id="shortSave" aria-label="Guardar en mi mazo" title="Guardar para memorizar">🧠</button>` +
       `<button class="short-ic" id="shortSearchBtn" aria-label="Buscar">🔍</button>` +
     `</div>` +
     `<div class="short-stage" id="shortStage"></div>` +
@@ -1398,6 +1399,7 @@ function buildShortUI(view) {
   $("#shortExit").onclick = () => showView("read");
   $("#shortUp").onclick = () => userNav(-1);
   $("#shortDown").onclick = () => userNav(1);
+  $("#shortSave").onclick = toggleShortSave;
   $("#shortSearchBtn").onclick = openShortSearch;
   $("#shortSearchClose").onclick = closeShortSearch;
   const si = $("#shortSearchInput");
@@ -1474,8 +1476,12 @@ async function showCard(dir) {
   try { data = await cardData(SH.bi, SH.c, SH.v); } catch (e) { stage.replaceChildren(errorEl(e)); return; }
   const card = el("div", "short-card");
   card.innerHTML = `<div class="short-card__in"><div class="short-ref">${esc(data.ref)}</div>` +
-    `<div class="short-text">${esc(data.text)}</div>` +
+    `<div class="short-text"></div>` +
     `<div class="short-tap" aria-hidden="true">toca para ${SH.audioOn ? "escuchar" : "leer de nuevo"}</div></div>`;
+  // Texto en palabras (para el resaltado "karaoke" que sigue a la voz)
+  const built = buildVerseSpans(data.text);
+  card.querySelector(".short-text").appendChild(built.node);
+  SH.curSpans = built.spans; SH.curText = data.text;
   const inner = card.querySelector(".short-card__in");
   inner.onclick = () => { if (SH.audioOn) { if (!SH.playing) playPause(); else speakCurrent(); } };
 
@@ -1494,7 +1500,44 @@ async function showCard(dir) {
   }
   const ref = data.ref;
   const tr = $("#shortTopRef"); if (tr) tr.textContent = ref;
+  updateShortSave();
   const hint = $("#shortHint"); if (hint && (SH.c !== 1 || SH.v !== 1 || SH.bi !== 0)) hint.classList.add("gone");
+}
+
+// Divide el texto en palabras envueltas en <span> con su rango de caracteres,
+// para iluminar la palabra que la voz está leyendo (evento onboundary).
+function buildVerseSpans(text) {
+  const frag = document.createDocumentFragment();
+  const spans = []; let idx = 0;
+  for (const part of text.split(/(\s+)/)) {
+    if (part === "") continue;
+    if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); idx += part.length; }
+    else {
+      const s = el("span", "sw", esc(part));
+      frag.appendChild(s); spans.push({ el: s, start: idx, end: idx + part.length }); idx += part.length;
+    }
+  }
+  return { node: frag, spans };
+}
+function litWord(charIndex) {
+  const spans = SH.curSpans; if (!spans) return;
+  const sp = spans.find((s) => charIndex >= s.start && charIndex < s.end);
+  if (sp) for (const s of spans) s.el.classList.toggle("lit", s === sp);
+}
+function clearLit() { if (SH.curSpans) for (const s of SH.curSpans) s.el.classList.remove("lit"); }
+
+function shortRefStr() { return `${BOOKS[SH.bi].id}:${SH.c}:${SH.v}`; }
+function updateShortSave() {
+  const btn = $("#shortSave"); if (!btn) return;
+  const on = Store.memHas(shortRefStr());
+  btn.classList.toggle("on", on);
+  btn.textContent = on ? "🧠" : "🧠";
+  btn.title = on ? "Guardado en tu mazo" : "Guardar para memorizar";
+}
+function toggleShortSave() {
+  const added = Store.memToggle(shortRefStr());
+  updateShortSave();
+  toast(added ? "Guardado en tu mazo 🧠" : "Quitado del mazo");
 }
 
 // Navegación manual (deslizar/flechas): reinicia el ancla del grupo.
@@ -1520,15 +1563,17 @@ function speakCurrent() {
 function speakText(text) {
   if (!hasTTS() || !SH.audioOn || !text) return;
   try { speechSynthesis.cancel(); } catch (e) {}
+  clearLit();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "es-ES"; u.rate = SH.rate;
   const v = spanishVoice(); if (v) u.voice = v;
+  u.onboundary = (e) => { if (!e.name || e.name === "word") litWord(e.charIndex || 0); };
   u.onend = onSpeakEnd;
   pulse(true);
   try { speechSynthesis.speak(u); } catch (e) {}
 }
 function onSpeakEnd() {
-  pulse(false);
+  pulse(false); clearLit();
   if (!SH.playing || !SH.audioOn) return;
   if (SH.repeat === "one") { speakCurrent(); return; }
   if (SH.repeat === "group") { advanceGroup(); return; }
@@ -1564,13 +1609,13 @@ function playPause() {
     speakCurrent();
   } else {
     try { speechSynthesis.cancel(); } catch (e) {}
-    pulse(false);
+    pulse(false); clearLit();
   }
   renderShortControls(); saveShortPrefs();
 }
 function toggleAudio() {
   SH.audioOn = !SH.audioOn;
-  if (!SH.audioOn) { SH.playing = false; try { speechSynthesis.cancel(); } catch (e) {} pulse(false); }
+  if (!SH.audioOn) { SH.playing = false; try { speechSynthesis.cancel(); } catch (e) {} pulse(false); clearLit(); }
   renderShortControls(); saveShortPrefs();
 }
 function cycleRepeat() {
