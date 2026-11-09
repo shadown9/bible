@@ -108,9 +108,12 @@ function closeWelcome() {
 
 /* --------------------------- Navegación vistas --------------------------- */
 function showView(name) {
+  if (name !== "short") shortStop();            // al salir del Short, cortamos el audio
   $$(".view").forEach((v) => v.classList.toggle("is-active", v.id === "view-" + name));
   $$(".tab").forEach((t) => t.classList.toggle("is-active", t.dataset.view === name));
+  document.documentElement.classList.toggle("short-mode", name === "short");
   window.scrollTo({ top: 0 });
+  if (name === "short") renderShort();
   if (name === "discover") renderDiscover();
   if (name === "marks") renderMarks();
   if (name === "search") renderSearch();
@@ -1278,6 +1281,381 @@ async function dailyCard() {
     card.onclick = () => goTo(bookId, c, v);
   } catch (e) { return el("span"); }
   return card;
+}
+
+/* ======================================================================
+   Biblia en Short — feed vertical con audio (memorizar deslizando)
+   Un versículo por pantalla; deslizas hacia arriba y aparece el
+   siguiente, leyéndose en voz alta (voz del navegador, gratis).
+   ====================================================================== */
+const SH = {
+  bi: 0, c: 1, v: 1,          // posición actual (índice de libro, cap, versículo)
+  audioOn: true,              // audio habilitado (si no, es lectura silenciosa)
+  playing: false,             // está leyendo y auto-avanzando
+  repeat: "off",              // off | one | group
+  group: 3,                   // tamaño del grupo en bucle
+  rate: 1,                    // velocidad de lectura
+  gStart: null,               // ancla del grupo {bi,c,v}
+  gIndex: 0,                  // posición dentro del grupo
+  animating: false,
+};
+let shortBuilt = false;
+let _voices = [];
+const RATES = [["0.75", 0.75, "Lento"], ["1", 1, "Normal"], ["1.25", 1.25, "Rápido"]];
+
+function hasTTS() { return typeof window !== "undefined" && "speechSynthesis" in window; }
+function primeVoices() {
+  if (!hasTTS()) return;
+  try {
+    _voices = speechSynthesis.getVoices();
+    if (!_voices.length) speechSynthesis.onvoiceschanged = () => { _voices = speechSynthesis.getVoices(); };
+  } catch (e) {}
+}
+function spanishVoice() {
+  if (!_voices.length && hasTTS()) { try { _voices = speechSynthesis.getVoices(); } catch (e) {} }
+  return _voices.find((v) => /^es[-_]/i.test(v.lang)) || _voices.find((v) => /(^|[-_])es/i.test(v.lang)) || null;
+}
+
+function loadShortPrefs() {
+  const s = Store.get("short") || {};
+  SH.audioOn = s.audio !== false;
+  SH.repeat = s.repeat || "off";
+  SH.group = s.group || 3;
+  SH.rate = s.rate || 1;
+}
+function saveShortPrefs() {
+  const book = BOOKS[SH.bi] ? BOOKS[SH.bi].id : "juan";
+  Store.set("short", { book, chapter: SH.c, verse: SH.v, audio: SH.audioOn, repeat: SH.repeat, group: SH.group, rate: SH.rate });
+}
+
+// Avanza/retrocede un versículo cruzando capítulos y libros. Devuelve {bi,c,v} o null en los extremos.
+async function moveRef(bi, c, v, dir) {
+  const es = await Data.es(BOOKS[bi].id);
+  const chap = es.chapters;
+  if (dir > 0) {
+    if (v < (chap[c - 1] || []).length) return { bi, c, v: v + 1 };
+    if (c < chap.length) return { bi, c: c + 1, v: 1 };
+    if (bi < BOOKS.length - 1) return { bi: bi + 1, c: 1, v: 1 };
+    return null;
+  } else {
+    if (v > 1) return { bi, c, v: v - 1 };
+    if (c > 1) return { bi, c: c - 1, v: (chap[c - 2] || []).length };
+    if (bi > 0) {
+      const pb = await Data.es(BOOKS[bi - 1].id);
+      const lc = pb.chapters.length;
+      return { bi: bi - 1, c: lc, v: pb.chapters[lc - 1].length };
+    }
+    return null;
+  }
+}
+
+async function cardData(bi, c, v) {
+  const book = BOOKS[bi];
+  const es = await Data.es(book.id);
+  const text = (es.chapters[c - 1] || [])[v - 1] || "";
+  return { ref: `${book.name} ${c}:${v}`, text, book };
+}
+
+function renderShort() {
+  const view = $("#view-short");
+  if (!shortBuilt) { buildShortUI(view); shortBuilt = true; loadShortPrefs(); }
+  primeVoices();
+  setShortStart().then(() => { renderShortControls(); showCard(0); });
+}
+
+async function setShortStart() {
+  const s = Store.get("short") || { book: "juan", chapter: 3, verse: 16 };
+  let bi = BOOKS.findIndex((b) => b.id === s.book); if (bi < 0) bi = 0;
+  // valida contra los datos reales
+  const es = await Data.es(BOOKS[bi].id);
+  let c = Math.min(Math.max(1, s.chapter || 1), es.chapters.length);
+  let v = Math.min(Math.max(1, s.verse || 1), es.chapters[c - 1].length);
+  SH.bi = bi; SH.c = c; SH.v = v; SH.gStart = { bi, c, v }; SH.gIndex = 0;
+}
+
+function buildShortUI(view) {
+  view.innerHTML =
+    `<div class="short-top">` +
+      `<button class="short-ic" id="shortExit" aria-label="Salir">✕</button>` +
+      `<div class="short-top__ref" id="shortTopRef"></div>` +
+      `<button class="short-ic" id="shortSearchBtn" aria-label="Buscar">🔍</button>` +
+    `</div>` +
+    `<div class="short-stage" id="shortStage"></div>` +
+    `<div class="short-sidenav">` +
+      `<button class="short-arrow" id="shortUp" aria-label="Anterior">▲</button>` +
+      `<button class="short-arrow" id="shortDown" aria-label="Siguiente">▼</button>` +
+    `</div>` +
+    `<div class="short-hint" id="shortHint">Desliza ↑ para el siguiente versículo</div>` +
+    `<div class="short-ctl" id="shortCtl"></div>` +
+    `<div class="short-search" id="shortSearch" hidden>` +
+      `<div class="short-search__bar">` +
+        `<input id="shortSearchInput" type="search" placeholder="Ej: Juan 3:16, Salmos 23, o una palabra…" />` +
+        `<button class="short-ic" id="shortSearchClose" aria-label="Cerrar">✕</button>` +
+      `</div>` +
+      `<div class="short-search__results" id="shortSearchResults"></div>` +
+    `</div>`;
+
+  $("#shortExit").onclick = () => showView("read");
+  $("#shortUp").onclick = () => userNav(-1);
+  $("#shortDown").onclick = () => userNav(1);
+  $("#shortSearchBtn").onclick = openShortSearch;
+  $("#shortSearchClose").onclick = closeShortSearch;
+  const si = $("#shortSearchInput");
+  si.addEventListener("keydown", (e) => { if (e.key === "Enter") runShortSearch(si.value.trim()); });
+
+  const searchOpen = () => !$("#shortSearch").hidden;
+  // Gestos de deslizar (táctil)
+  let ty = null, tx = null;
+  view.addEventListener("touchstart", (e) => { if (searchOpen()) return; ty = e.touches[0].clientY; tx = e.touches[0].clientX; }, { passive: true });
+  view.addEventListener("touchend", (e) => {
+    if (ty == null) return;
+    const dy = e.changedTouches[0].clientY - ty, dx = e.changedTouches[0].clientX - tx;
+    ty = null;
+    if (Math.abs(dy) < 45 || Math.abs(dx) > Math.abs(dy)) return;  // ignora toques y gestos horizontales
+    userNav(dy < 0 ? 1 : -1);
+  }, { passive: true });
+
+  // Rueda del ratón (escritorio)
+  let wheelLock = false;
+  view.addEventListener("wheel", (e) => {
+    if (searchOpen() || Math.abs(e.deltaY) < 12 || wheelLock) return;
+    wheelLock = true; setTimeout(() => (wheelLock = false), 420);
+    userNav(e.deltaY > 0 ? 1 : -1);
+  }, { passive: true });
+
+  // Teclado (solo cuando el Short está activo)
+  document.addEventListener("keydown", (e) => {
+    if (!document.documentElement.classList.contains("short-mode")) return;
+    if (!$("#shortSearch").hidden) return;  // no robar teclas al buscador
+    if (e.key === "ArrowDown" || e.key === " ") { e.preventDefault(); userNav(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); userNav(-1); }
+    else if (e.key === "Escape") showView("read");
+  });
+}
+
+function renderShortControls() {
+  const ctl = $("#shortCtl");
+  if (!ctl) return;
+  ctl.replaceChildren();
+  // Audio on/off
+  const aud = el("button", "short-btn" + (SH.audioOn ? " on" : ""), SH.audioOn ? "🔊" : "🔇");
+  aud.title = "Audio"; aud.onclick = toggleAudio;
+  ctl.appendChild(aud);
+
+  if (SH.audioOn) {
+    const pp = el("button", "short-btn short-btn--play", SH.playing ? "⏸" : "▶");
+    pp.title = SH.playing ? "Pausa" : "Reproducir"; pp.onclick = playPause;
+    ctl.appendChild(pp);
+
+    const repLbl = { off: "🔁 No", one: "🔂 1", group: "🔁 Grupo" }[SH.repeat];
+    const rep = el("button", "short-btn", repLbl);
+    rep.title = "Repetir"; rep.onclick = cycleRepeat;
+    ctl.appendChild(rep);
+
+    if (SH.repeat === "group") {
+      const grp = el("button", "short-btn", `${SH.group}×`);
+      grp.title = "Cuántos versículos en el bucle"; grp.onclick = cycleGroup;
+      ctl.appendChild(grp);
+    }
+
+    const rateLbl = (RATES.find((r) => r[1] === SH.rate) || RATES[1])[2];
+    const rt = el("button", "short-btn", "🐢 " + rateLbl);
+    rt.title = "Velocidad"; rt.onclick = cycleRate;
+    ctl.appendChild(rt);
+  } else {
+    ctl.appendChild(el("span", "short-ctl__hint", "Lectura silenciosa · toca 🔇 para escuchar"));
+  }
+}
+
+async function showCard(dir) {
+  const stage = $("#shortStage");
+  if (!stage) return;
+  let data;
+  try { data = await cardData(SH.bi, SH.c, SH.v); } catch (e) { stage.replaceChildren(errorEl(e)); return; }
+  const card = el("div", "short-card");
+  card.innerHTML = `<div class="short-card__in"><div class="short-ref">${esc(data.ref)}</div>` +
+    `<div class="short-text">${esc(data.text)}</div>` +
+    `<div class="short-tap" aria-hidden="true">toca para ${SH.audioOn ? "escuchar" : "leer de nuevo"}</div></div>`;
+  const inner = card.querySelector(".short-card__in");
+  inner.onclick = () => { if (SH.audioOn) { if (!SH.playing) playPause(); else speakCurrent(); } };
+
+  const old = stage.firstElementChild;
+  if (!old || dir === 0) {
+    stage.replaceChildren(card);
+  } else {
+    SH.animating = true;
+    card.classList.add(dir > 0 ? "from-bottom" : "from-top");
+    stage.appendChild(card);
+    requestAnimationFrame(() => {
+      card.classList.remove("from-bottom", "from-top");
+      old.classList.add(dir > 0 ? "to-top" : "to-bottom");
+    });
+    setTimeout(() => { try { old.remove(); } catch (e) {} SH.animating = false; }, 340);
+  }
+  const ref = data.ref;
+  const tr = $("#shortTopRef"); if (tr) tr.textContent = ref;
+  const hint = $("#shortHint"); if (hint && (SH.c !== 1 || SH.v !== 1 || SH.bi !== 0)) hint.classList.add("gone");
+}
+
+// Navegación manual (deslizar/flechas): reinicia el ancla del grupo.
+async function userNav(dir) {
+  if (SH.animating) return;
+  const nx = await moveRef(SH.bi, SH.c, SH.v, dir);
+  if (!nx) { bounce(); return; }
+  SH.bi = nx.bi; SH.c = nx.c; SH.v = nx.v;
+  SH.gStart = { bi: SH.bi, c: SH.c, v: SH.v }; SH.gIndex = 0;
+  await showCard(dir);
+  saveShortPrefs();
+  if (SH.audioOn && SH.playing) speakCurrent();
+}
+function bounce() {
+  const c = $("#shortStage .short-card");
+  if (c) { c.classList.add("bounce"); setTimeout(() => c.classList.remove("bounce"), 300); }
+}
+
+function speakCurrent() {
+  if (!SH.audioOn) return;
+  cardData(SH.bi, SH.c, SH.v).then(({ text }) => speakText(text)).catch(() => {});
+}
+function speakText(text) {
+  if (!hasTTS() || !SH.audioOn || !text) return;
+  try { speechSynthesis.cancel(); } catch (e) {}
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "es-ES"; u.rate = SH.rate;
+  const v = spanishVoice(); if (v) u.voice = v;
+  u.onend = onSpeakEnd;
+  pulse(true);
+  try { speechSynthesis.speak(u); } catch (e) {}
+}
+function onSpeakEnd() {
+  pulse(false);
+  if (!SH.playing || !SH.audioOn) return;
+  if (SH.repeat === "one") { speakCurrent(); return; }
+  if (SH.repeat === "group") { advanceGroup(); return; }
+  autoForward();
+}
+async function advanceGroup() {
+  if (SH.gIndex < SH.group - 1) {
+    const nx = await moveRef(SH.bi, SH.c, SH.v, 1);
+    if (nx) {
+      SH.bi = nx.bi; SH.c = nx.c; SH.v = nx.v; SH.gIndex++;
+      await showCard(1); saveShortPrefs(); speakCurrent(); return;
+    }
+  }
+  // volver al inicio del grupo
+  const g = SH.gStart || { bi: SH.bi, c: SH.c, v: SH.v };
+  SH.bi = g.bi; SH.c = g.c; SH.v = g.v; SH.gIndex = 0;
+  await showCard(-1); saveShortPrefs(); speakCurrent();
+}
+async function autoForward() {
+  const nx = await moveRef(SH.bi, SH.c, SH.v, 1);
+  if (!nx) { SH.playing = false; renderShortControls(); return; }
+  SH.bi = nx.bi; SH.c = nx.c; SH.v = nx.v;
+  SH.gStart = { bi: SH.bi, c: SH.c, v: SH.v };
+  await showCard(1); saveShortPrefs(); speakCurrent();
+}
+
+function playPause() {
+  if (!hasTTS()) { toast("Tu navegador no tiene lectura de voz."); return; }
+  SH.playing = !SH.playing;
+  if (SH.playing) {
+    SH.audioOn = true;
+    SH.gStart = { bi: SH.bi, c: SH.c, v: SH.v }; SH.gIndex = 0;
+    speakCurrent();
+  } else {
+    try { speechSynthesis.cancel(); } catch (e) {}
+    pulse(false);
+  }
+  renderShortControls(); saveShortPrefs();
+}
+function toggleAudio() {
+  SH.audioOn = !SH.audioOn;
+  if (!SH.audioOn) { SH.playing = false; try { speechSynthesis.cancel(); } catch (e) {} pulse(false); }
+  renderShortControls(); saveShortPrefs();
+}
+function cycleRepeat() {
+  SH.repeat = SH.repeat === "off" ? "one" : SH.repeat === "one" ? "group" : "off";
+  renderShortControls(); saveShortPrefs();
+}
+function cycleGroup() { SH.group = SH.group >= 4 ? 2 : SH.group + 1; renderShortControls(); saveShortPrefs(); }
+function cycleRate() {
+  const i = RATES.findIndex((r) => r[1] === SH.rate);
+  SH.rate = RATES[(i + 1) % RATES.length][1];
+  renderShortControls(); saveShortPrefs();
+  if (SH.playing) speakCurrent();  // aplica la velocidad al instante
+}
+function pulse(on) {
+  const c = $("#shortStage .short-card");
+  if (c) c.classList.toggle("speaking", on);
+}
+function shortStop() {
+  SH.playing = false;
+  if (hasTTS()) { try { speechSynthesis.cancel(); } catch (e) {} }
+}
+
+/* --- Buscador propio del Short (referencia o palabra) --- */
+function openShortSearch() {
+  $("#shortSearch").hidden = false;
+  const r = $("#shortSearchResults");
+  r.replaceChildren(el("p", "short-sr__hint", "Escribe una referencia (Juan 3:16, Salmos 23) o una palabra para buscar en toda la Biblia."));
+  setTimeout(() => $("#shortSearchInput").focus(), 50);
+}
+function closeShortSearch() { $("#shortSearch").hidden = true; }
+
+function parseReference(q) {
+  const m = q.trim().match(/^(.+?)\s+(\d+)(?:\s*[:.]\s*(\d+))?\s*$/);
+  if (!m) return null;
+  const bq = norm(m[1]), c = +m[2], v = m[3] ? +m[3] : 1;
+  let bi = BOOKS.findIndex((b) => norm(b.name) === bq || norm(b.abbrev) === bq);
+  if (bi < 0) bi = BOOKS.findIndex((b) => norm(b.name).startsWith(bq));
+  if (bi < 0) bi = BOOKS.findIndex((b) => norm(b.name).includes(bq));
+  if (bi < 0) return null;
+  return { bi, c, v };
+}
+async function runShortSearch(q) {
+  const box = $("#shortSearchResults");
+  if (!q) { box.replaceChildren(el("p", "short-sr__hint", "Escribe algo para buscar.")); return; }
+  const ref = parseReference(q);
+  if (ref) {
+    try {
+      const es = await Data.es(BOOKS[ref.bi].id);
+      const c = Math.min(Math.max(1, ref.c), es.chapters.length);
+      const v = Math.min(Math.max(1, ref.v), es.chapters[c - 1].length);
+      await shortJump(ref.bi, c, v);
+      closeShortSearch();
+      return;
+    } catch (e) {}
+  }
+  // búsqueda por palabra
+  box.replaceChildren(loadingEl());
+  try {
+    const arr = await Data.versionFile("json/es_rvr.json");
+    const nq = norm(q); const out = [];
+    for (let bi = 0; bi < arr.length && out.length < 80; bi++) {
+      const chapters = arr[bi].chapters;
+      for (let ci = 0; ci < chapters.length && out.length < 80; ci++) {
+        const vs = chapters[ci];
+        for (let vi = 0; vi < vs.length; vi++) {
+          if (norm(vs[vi]).includes(nq)) { out.push({ bi, c: ci + 1, v: vi + 1, t: vs[vi] }); if (out.length >= 80) break; }
+        }
+      }
+    }
+    const frag = document.createDocumentFragment();
+    frag.appendChild(el("p", "short-sr__hint", out.length ? `${out.length}${out.length >= 80 ? "+" : ""} resultado(s) · toca para ir` : "Sin resultados. Prueba una referencia como «Juan 3:16»."));
+    out.forEach((r) => {
+      const d = el("div", "short-sr");
+      d.innerHTML = `<div class="short-sr__r">${esc(BOOKS[r.bi].name)} ${r.c}:${r.v}</div><div class="short-sr__t">${esc(r.t)}</div>`;
+      d.onclick = () => { shortJump(r.bi, r.c, r.v); closeShortSearch(); };
+      frag.appendChild(d);
+    });
+    box.replaceChildren(frag);
+  } catch (e) { box.replaceChildren(errorEl(e)); }
+}
+async function shortJump(bi, c, v) {
+  SH.bi = bi; SH.c = c; SH.v = v;
+  SH.gStart = { bi, c, v }; SH.gIndex = 0;
+  await showCard(0); saveShortPrefs();
+  if (SH.audioOn && SH.playing) speakCurrent();
 }
 
 /* ------------------------------ Utilidades ------------------------------ */

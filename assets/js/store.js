@@ -19,6 +19,8 @@ const DEFAULTS = {
   plans: {},              // planId -> [índices de días completados]
   memorize: {},           // ref -> { lvl, due } (repetición espaciada)
   streak: { last: 0, count: 0 }, // racha de práctica (día -> nº)
+  // Biblia en Short: última posición y preferencias del feed con audio
+  short: { book: "juan", chapter: 3, verse: 16, audio: true, repeat: "off", group: 3, rate: 1 },
 };
 
 // intervalos de repaso en días según el nivel alcanzado (0..5)
