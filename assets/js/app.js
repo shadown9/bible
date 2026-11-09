@@ -1604,18 +1604,30 @@ function bounce() {
   if (c) { c.classList.add("bounce"); setTimeout(() => c.classList.remove("bounce"), 300); }
 }
 
+function buildSpoken(ref, text) {
+  // Primero dice la referencia (Juan 3, 16) y luego el versículo.
+  const prefix = ref.replace(":", ", ") + ". ";
+  return { full: prefix + text, offset: prefix.length };
+}
 function speakCurrent() {
   if (!SH.audioOn) return;
-  cardData(SH.bi, SH.c, SH.v).then(({ ref, text }) => {
-    // Primero dice la referencia (Juan 3, 16) y luego el versículo.
-    const spokenRef = ref.replace(":", ", ");
-    const prefix = spokenRef + ". ";
-    speakText(prefix + text, prefix.length);
-  }).catch(() => {});
+  // IMPORTANTE: hablar de forma SÍNCRONA (sin await) para que el navegador
+  // móvil lo permita dentro del toque. Usamos el texto ya cargado en la tarjeta.
+  if (SH.curText != null && BOOKS[SH.bi]) {
+    const ref = `${BOOKS[SH.bi].name} ${SH.c}:${SH.v}`;
+    const { full, offset } = buildSpoken(ref, SH.curText);
+    speakText(full, offset);
+  } else {
+    cardData(SH.bi, SH.c, SH.v).then(({ ref, text }) => {
+      const { full, offset } = buildSpoken(ref, text);
+      speakText(full, offset);
+    }).catch(() => {});
+  }
 }
 function speakText(text, offset = 0) {
   if (!hasTTS() || !SH.audioOn || !text) return;
-  try { speechSynthesis.cancel(); } catch (e) {}
+  // Cancelar solo si realmente hay algo sonando (cancel+speak seguido rompe el audio en algunos móviles).
+  try { if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel(); } catch (e) {}
   clearLit();
   SH.speakOffset = offset;
   const u = new SpeechSynthesisUtterance(text);
@@ -1649,6 +1661,14 @@ function playPause() {
     SH.audioOn = true;
     SH.playCount = 0;
     speakCurrent();
+    // Si el dispositivo no tiene ninguna voz instalada, avisa (no sonará nada).
+    setTimeout(() => {
+      try {
+        if (SH.playing && !speechSynthesis.getVoices().length && !speechSynthesis.speaking && !speechSynthesis.pending) {
+          toast("Tu teléfono no tiene una voz instalada para leer. Revisa «Texto a voz» en Ajustes.");
+        }
+      } catch (e) {}
+    }, 900);
   } else {
     try { speechSynthesis.cancel(); } catch (e) {}
     pulse(false); clearLit();
