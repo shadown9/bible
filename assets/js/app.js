@@ -1259,11 +1259,11 @@ function renderSettings() {
 
   const c4 = el("div", "card"); c4.appendChild(el("h3", null, "Acerca de"));
   c4.appendChild(el("p", "muted",
-    "<b>Texto:</b> Reina Valera 1909 (dominio público). La RV1960 tiene derechos de autor.<br>" +
+    "<b>Texto:</b> Reina-Valera 1909 con ortografía modernizada (dominio público). La RV1960 tiene derechos de autor, por eso no se puede incluir gratis.<br>" +
     "<b>Hebreo:</b> Códice de Leningrado / OpenScriptures (CC BY 4.0).<br>" +
     "<b>Significados:</b> ~1000 términos hebreos traducidos al español + Concordancia Strong.<br><br>" +
     "Hecho para aprender la Palabra de forma profunda y sencilla.<br>" +
-    "<span style='opacity:.7'>Versión 1.0 · actualizada 6 nov 2026</span>"));
+    "<span style='opacity:.7'>Versión 1.1 · texto con ortografía modernizada</span>"));
   frag.appendChild(c4);
   view.replaceChildren(frag);
 }
