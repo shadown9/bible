@@ -415,7 +415,7 @@ async function openStudy(b, c, v, esText) {
       Data.versions(),
     ]);
     const core = [
-      { id: "es_rvr", name: "Reina Valera 1909", lang: "Español" },
+      { id: "es_rvr", name: "Reina-Valera Gómez", lang: "Español" },
       { id: origId, name: origLangName + " (original)", lang: origLangName, rtl: lang === "he", orig: lang },
       { id: "en_kjv", name: "King James", lang: "Inglés" },
     ];
@@ -1182,7 +1182,7 @@ function renderSearch() {
   const btn = el("button", "iconbtn", "Buscar"); btn.style.minWidth = "auto"; btn.style.padding = ".6rem 1rem";
   box.append(input, btn);
   const results = el("div"); results.id = "searchResults";
-  results.appendChild(el("p", "muted", "Escribe al menos 3 letras. Se busca en la Reina Valera 1909."));
+  results.appendChild(el("p", "muted", "Escribe al menos 3 letras. Se busca en la Reina-Valera Gómez."));
   view.replaceChildren(box, results);
   const run = () => doSearch(input.value.trim());
   btn.onclick = run;
@@ -1259,11 +1259,13 @@ function renderSettings() {
 
   const c4 = el("div", "card"); c4.appendChild(el("h3", null, "Acerca de"));
   c4.appendChild(el("p", "muted",
-    "<b>Texto:</b> Reina-Valera 1909 con ortografía modernizada (dominio público). La RV1960 tiene derechos de autor, por eso no se puede incluir gratis.<br>" +
+    "<b>Texto:</b> Santa Biblia Reina-Valera Gómez (RVG), © Dr. Humberto Gómez Caballero. " +
+    "Se usa con permiso para distribución gratuita, sin fines de lucro y sin cambiar las palabras. Fuente: eBible.org.<br>" +
+    "La RV1960 no se incluye porque tiene derechos de autor que no permiten su copia gratuita.<br>" +
     "<b>Hebreo:</b> Códice de Leningrado / OpenScriptures (CC BY 4.0).<br>" +
     "<b>Significados:</b> ~1000 términos hebreos traducidos al español + Concordancia Strong.<br><br>" +
     "Hecho para aprender la Palabra de forma profunda y sencilla.<br>" +
-    "<span style='opacity:.7'>Versión 1.1 · texto con ortografía modernizada</span>"));
+    "<span style='opacity:.7'>Versión 2.0 · Reina-Valera Gómez</span>"));
   frag.appendChild(c4);
   view.replaceChildren(frag);
 }
