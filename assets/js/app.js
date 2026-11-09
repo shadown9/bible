@@ -1443,7 +1443,12 @@ function buildShortUI(view) {
   $("#shortSearchBtn").onclick = openShortSearch;
   $("#shortSearchClose").onclick = closeShortSearch;
   const si = $("#shortSearchInput");
-  si.addEventListener("keydown", (e) => { if (e.key === "Enter") runShortSearch(si.value.trim()); });
+  si.addEventListener("input", () => onShortSearchInput(si.value));
+  si.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const ref = parseReference(si.value.trim());
+    if (ref) { shortJump(ref.bi, ref.c, ref.v); closeShortSearch(); }
+  });
 
   const searchOpen = () => !$("#shortSearch").hidden;
   // Gestos de deslizar (táctil)
@@ -1676,65 +1681,110 @@ function shortStop() {
   if (hasTTS()) { try { speechSynthesis.cancel(); } catch (e) {} }
 }
 
-/* --- Buscador propio del Short (referencia o palabra) --- */
+/* --- Buscador propio del Short: en vivo y tolerante --- */
 function openShortSearch() {
   $("#shortSearch").hidden = false;
-  const r = $("#shortSearchResults");
-  r.replaceChildren(el("p", "short-sr__hint", "Escribe una referencia (Juan 3:16, Salmos 23) o una palabra para buscar en toda la Biblia."));
+  liveShortSearch("");
   setTimeout(() => $("#shortSearchInput").focus(), 50);
 }
 function closeShortSearch() { $("#shortSearch").hidden = true; }
 
+// Encuentra el libro aunque se escriba parcial, sin acentos o con faltas (p. ej. "echos" -> Hechos).
+function findBook(bq) {
+  bq = norm(bq).replace(/\s+/g, " ").trim();
+  const bqNoSp = bq.replace(/\s+/g, "");
+  if (!bq) return -1;
+  const C = BOOKS.map((b) => ({ n: norm(b.name), a: norm(b.abbrev), ns: norm(b.name).replace(/\s+/g, "") }));
+  let i = C.findIndex((c) => c.n === bq || c.a === bq || c.ns === bqNoSp);
+  if (i < 0) i = C.findIndex((c) => c.n.startsWith(bq) || c.ns.startsWith(bqNoSp));
+  if (i < 0) i = C.findIndex((c) => c.n.includes(bq));
+  return i;
+}
+// Interpreta "Juan 3:16", "juan 3 16", "echos 3.19", e incluso "Hechos 319" (sin separador).
 function parseReference(q) {
-  const m = q.trim().match(/^(.+?)\s+(\d+)(?:\s*[:.]\s*(\d+))?\s*$/);
-  if (!m) return null;
-  const bq = norm(m[1]), c = +m[2], v = m[3] ? +m[3] : 1;
-  let bi = BOOKS.findIndex((b) => norm(b.name) === bq || norm(b.abbrev) === bq);
-  if (bi < 0) bi = BOOKS.findIndex((b) => norm(b.name).startsWith(bq));
-  if (bi < 0) bi = BOOKS.findIndex((b) => norm(b.name).includes(bq));
+  const cleaned = q.replace(/[:.,]/g, " ").replace(/\s+/g, " ").trim();
+  if (!cleaned) return null;
+  const parts = cleaned.split(" ");
+  const nums = [];
+  while (parts.length && /^\d+$/.test(parts[parts.length - 1])) nums.unshift(parts.pop());
+  if (!parts.length || !nums.length) return null;
+  const bi = findBook(parts.join(" "));
   if (bi < 0) return null;
+  let c = +nums[0], v = nums[1] ? +nums[1] : 1;
+  // "Hechos 319" -> capítulo 3, versículo 19 (si 319 no es un capítulo válido)
+  if (nums.length === 1 && c > BOOKS[bi].chapters && nums[0].length >= 2) {
+    for (let k = 1; k < nums[0].length; k++) {
+      const cc = +nums[0].slice(0, k), vv = +nums[0].slice(k);
+      if (cc >= 1 && cc <= BOOKS[bi].chapters && vv >= 1) { c = cc; v = vv; break; }
+    }
+  }
   return { bi, c, v };
 }
-async function runShortSearch(q) {
+
+let shortSearchT;
+function onShortSearchInput(v) {
+  clearTimeout(shortSearchT);
+  shortSearchT = setTimeout(() => liveShortSearch(v.trim()), 180);
+}
+async function liveShortSearch(q) {
   const box = $("#shortSearchResults");
-  if (!q) { box.replaceChildren(el("p", "short-sr__hint", "Escribe algo para buscar.")); return; }
+  if (!box) return;
+  if (!q) {
+    box.replaceChildren(el("p", "short-sr__hint", "Escribe una referencia (Juan 3:16, Hechos 3:19) o una palabra. Los resultados aparecen solos."));
+    return;
+  }
+  const frag = document.createDocumentFragment();
   const ref = parseReference(q);
   if (ref) {
-    try {
-      const es = await Data.es(BOOKS[ref.bi].id);
-      const c = Math.min(Math.max(1, ref.c), es.chapters.length);
-      const v = Math.min(Math.max(1, ref.v), es.chapters[c - 1].length);
-      await shortJump(ref.bi, c, v);
-      closeShortSearch();
-      return;
-    } catch (e) {}
+    const bk = BOOKS[ref.bi];
+    const c = Math.min(Math.max(1, ref.c), bk.chapters);
+    const go = el("button", "short-go", `<span class="short-go__i">📖</span><span class="short-go__t"><b>Ir a ${esc(bk.name)} ${c}:${ref.v}</b><small>Abrir este versículo</small></span><span class="short-go__a">›</span>`);
+    go.onclick = () => { shortJump(ref.bi, c, ref.v); closeShortSearch(); };
+    frag.appendChild(go);
   }
-  // búsqueda por palabra
-  box.replaceChildren(loadingEl());
-  try {
-    const arr = await Data.versionFile("json/es_rvr.json");
-    const nq = norm(q); const out = [];
-    for (let bi = 0; bi < arr.length && out.length < 80; bi++) {
-      const chapters = arr[bi].chapters;
-      for (let ci = 0; ci < chapters.length && out.length < 80; ci++) {
-        const vs = chapters[ci];
-        for (let vi = 0; vi < vs.length; vi++) {
-          if (norm(vs[vi]).includes(nq)) { out.push({ bi, c: ci + 1, v: vi + 1, t: vs[vi] }); if (out.length >= 80) break; }
+  box.replaceChildren(frag);
+  // Búsqueda por palabra (si hay 3+ letras)
+  const letters = q.replace(/[^\p{L}]/gu, "");
+  if (letters.length >= 3) {
+    const token = ++liveShortSearch._t;
+    try {
+      const arr = await Data.versionFile("json/es_rvr.json");
+      if (token !== liveShortSearch._t) return;   // llegó otra búsqueda más nueva
+      const nq = norm(q); const out = [];
+      for (let bi = 0; bi < arr.length && out.length < 50; bi++) {
+        const chapters = arr[bi].chapters;
+        for (let ci = 0; ci < chapters.length && out.length < 50; ci++) {
+          const vs = chapters[ci];
+          for (let vi = 0; vi < vs.length; vi++) {
+            if (norm(vs[vi]).includes(nq)) { out.push({ bi, c: ci + 1, v: vi + 1, t: vs[vi] }); if (out.length >= 50) break; }
+          }
         }
       }
-    }
-    const frag = document.createDocumentFragment();
-    frag.appendChild(el("p", "short-sr__hint", out.length ? `${out.length}${out.length >= 80 ? "+" : ""} resultado(s) · toca para ir` : "Sin resultados. Prueba una referencia como «Juan 3:16»."));
-    out.forEach((r) => {
-      const d = el("div", "short-sr");
-      d.innerHTML = `<div class="short-sr__r">${esc(BOOKS[r.bi].name)} ${r.c}:${r.v}</div><div class="short-sr__t">${esc(r.t)}</div>`;
-      d.onclick = () => { shortJump(r.bi, r.c, r.v); closeShortSearch(); };
-      frag.appendChild(d);
-    });
-    box.replaceChildren(frag);
-  } catch (e) { box.replaceChildren(errorEl(e)); }
+      if (token !== liveShortSearch._t) return;
+      if (out.length) {
+        box.appendChild(el("p", "short-sr__hint", `${out.length}${out.length >= 50 ? "+" : ""} coincidencia(s) · toca para ir`));
+        out.forEach((r) => {
+          const d = el("div", "short-sr");
+          d.innerHTML = `<div class="short-sr__r">${esc(BOOKS[r.bi].name)} ${r.c}:${r.v}</div><div class="short-sr__t">${esc(r.t)}</div>`;
+          d.onclick = () => { shortJump(r.bi, r.c, r.v); closeShortSearch(); };
+          box.appendChild(d);
+        });
+      } else if (!ref) {
+        box.appendChild(el("p", "short-sr__hint", "Sin coincidencias. Prueba «Juan 3:16» o una palabra."));
+      }
+    } catch (e) {}
+  } else if (!ref) {
+    box.appendChild(el("p", "short-sr__hint", "Sigue escribiendo…"));
+  }
 }
+liveShortSearch._t = 0;
+
 async function shortJump(bi, c, v) {
+  try {
+    const es = await Data.es(BOOKS[bi].id);
+    c = Math.min(Math.max(1, c), es.chapters.length);
+    v = Math.min(Math.max(1, v), es.chapters[c - 1].length);
+  } catch (e) {}
   SH.bi = bi; SH.c = c; SH.v = v;
   SH.playCount = 0;
   await showCard(0); saveShortPrefs();

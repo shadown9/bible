@@ -559,4 +559,13 @@ html.short-mode, html.short-mode body { overflow: hidden; height: 100%; }
 .short-sr:active { background: var(--surface-2); }
 .short-sr__r { color: var(--accent-soft); font-weight: 700; font-size: .85rem; }
 .short-sr__t { color: var(--text); font-size: .95rem; line-height: 1.4; }
-.short-sr__hint { color: var(--text-soft); font-size: .9rem; margin: 0 0 .4rem; }
+.short-sr__hint { color: var(--text-soft); font-size: .9rem; margin: .2rem 0 .4rem; }
+.short-go { display: flex; align-items: center; gap: .7rem; width: 100%; text-align: left; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft)); color: var(--accent-ink);
+  border: none; border-radius: 14px; padding: .8rem .9rem; margin: .2rem 0 .6rem; box-shadow: var(--shadow); }
+.short-go:active { filter: brightness(.96); }
+.short-go__i { font-size: 1.4rem; flex: none; }
+.short-go__t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.short-go__t b { font-size: 1rem; }
+.short-go__t small { font-size: .78rem; opacity: .85; }
+.short-go__a { font-size: 1.5rem; opacity: .8; flex: none; }
