@@ -57,3 +57,8 @@ jobs:
       - name: Desplegar en GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # GitHub Pages va lento a veces; damos más margen para evitar
+          # que el paso aborte esperando a que el despliegue quede listo.
+          timeout: 1800000
+          error_count: 20
