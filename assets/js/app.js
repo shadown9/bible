@@ -54,6 +54,17 @@ async function init() {
   $("#btnNav").addEventListener("click", openNavigator);
   $("#btnTheme").addEventListener("click", cycleTheme);
   $("#btnHelp").addEventListener("click", () => showWelcome());
+  // Buscador rápido desde cualquier pantalla (la lupa de arriba)
+  $("#btnFind").addEventListener("click", openFind);
+  $("#findClose").addEventListener("click", closeFind);
+  const fi = $("#findInput");
+  fi.addEventListener("input", () => { clearTimeout(findT); findT = setTimeout(() => liveFind(fi.value.trim()), 180); });
+  fi.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeFind(); return; }
+    if (e.key !== "Enter") return;
+    const r = parseReference(fi.value.trim());
+    if (r) { goTo(BOOKS[r.bi].id, Math.min(Math.max(1, r.c), BOOKS[r.bi].chapters), r.v); closeFind(); }
+  });
   // cada botón/fondo [data-close] cierra SOLO su propia hoja (permite apilar)
   document.addEventListener("click", (e) => {
     const c = e.target.closest("[data-close]");
@@ -1171,6 +1182,57 @@ function updateMarksBadge() {
   if (!badge) { badge = el("span", "tab__badge"); tab.appendChild(badge); }
   badge.textContent = n > 99 ? "99+" : n;
 }
+
+/* ------------------ Buscador rápido (lupa de la barra) ------------------ */
+let findT;
+function openFind() {
+  $("#find").hidden = false;
+  $("#findResults").replaceChildren(el("p", "short-sr__hint", "Escribe un versículo (Josué 1:9) o una palabra. Los resultados salen solos."));
+  const fi = $("#findInput"); fi.value = "";
+  setTimeout(() => fi.focus(), 50);
+}
+function closeFind() { $("#find").hidden = true; }
+async function liveFind(q) {
+  const box = $("#findResults"); if (!box) return;
+  if (!q) { box.replaceChildren(el("p", "short-sr__hint", "Escribe un versículo o una palabra.")); return; }
+  const frag = document.createDocumentFragment();
+  const ref = parseReference(q);
+  if (ref) {
+    const bk = BOOKS[ref.bi]; const c = Math.min(Math.max(1, ref.c), bk.chapters);
+    const go = el("button", "short-go",
+      `<span class="short-go__i">📖</span><span class="short-go__t"><b>Ir a ${esc(bk.name)} ${c}:${ref.v}</b><small>Abrir y leer este versículo</small></span><span class="short-go__a">›</span>`);
+    go.onclick = () => { goTo(bk.id, c, ref.v); closeFind(); };
+    frag.appendChild(go);
+  }
+  box.replaceChildren(frag);
+  const letters = q.replace(/[^\p{L}]/gu, "");
+  if (letters.length < 3) { if (!ref) box.appendChild(el("p", "short-sr__hint", "Escribe al menos 3 letras para buscar una palabra.")); return; }
+  const tok = ++liveFind._t;
+  try {
+    const arr = await Data.versionFile("json/es_rvr.json");
+    if (tok !== liveFind._t) return;
+    const nq = norm(q); const out = [];
+    for (let bi = 0; bi < arr.length && out.length < 60; bi++) {
+      const chapters = arr[bi].chapters;
+      for (let ci = 0; ci < chapters.length && out.length < 60; ci++) {
+        const vs = chapters[ci];
+        for (let vi = 0; vi < vs.length; vi++) {
+          if (norm(vs[vi]).includes(nq)) { out.push({ bi, c: ci + 1, v: vi + 1, t: vs[vi] }); if (out.length >= 60) break; }
+        }
+      }
+    }
+    if (tok !== liveFind._t) return;
+    if (out.length) box.appendChild(el("p", "short-sr__hint", `${out.length}${out.length >= 60 ? "+" : ""} coincidencia(s) · toca para ir`));
+    else if (!ref) box.appendChild(el("p", "short-sr__hint", "Sin coincidencias. Prueba «Juan 3:16» o una palabra."));
+    out.forEach((r) => {
+      const d = el("div", "short-sr");
+      d.innerHTML = `<div class="short-sr__r">${esc(BOOKS[r.bi].name)} ${r.c}:${r.v}</div><div class="short-sr__t">${esc(r.t)}</div>`;
+      d.onclick = () => { goTo(BOOKS[r.bi].id, r.c, r.v); closeFind(); };
+      box.appendChild(d);
+    });
+  } catch (e) {}
+}
+liveFind._t = 0;
 
 /* ------------------------------- Buscar ------------------------------- */
 let searchReady = false;

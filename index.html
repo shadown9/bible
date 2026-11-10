@@ -19,10 +19,20 @@
       <svg viewBox="0 0 24 24" class="chev" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <div class="topbar__right">
+      <button id="btnFind" class="iconbtn" title="Buscar" aria-label="Buscar">🔍</button>
       <button id="btnHelp" class="iconbtn" title="¿Cómo se usa?" aria-label="Ayuda">?</button>
       <button id="btnTheme" class="iconbtn" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
     </div>
   </header>
+
+  <!-- Buscador rápido (desde cualquier pantalla) -->
+  <div id="find" class="find" hidden>
+    <div class="find__bar">
+      <input id="findInput" type="search" placeholder="Versículo (Josué 1:9) o una palabra…" />
+      <button class="short-ic" id="findClose" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="find__results" id="findResults"></div>
+  </div>
 
   <!-- Bienvenida / ¿Cómo se usa? -->
   <div id="welcome" class="welcome" hidden>

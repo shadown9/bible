@@ -569,3 +569,13 @@ html.short-mode, html.short-mode body { overflow: hidden; height: 100%; }
 .short-go__t b { font-size: 1rem; }
 .short-go__t small { font-size: .78rem; opacity: .85; }
 .short-go__a { font-size: 1.5rem; opacity: .8; flex: none; }
+
+/* Buscador rápido (lupa de la barra superior) */
+.find { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + .7rem) .9rem 1rem; animation: fade .2s ease; }
+.find[hidden] { display: none; }
+.find__bar { display: flex; gap: .5rem; align-items: center; }
+.find__bar input { flex: 1; padding: .75rem .9rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font-size: 1rem; }
+.find__bar .short-ic { background: var(--surface-2); color: var(--text); }
+.find__results { margin-top: .9rem; overflow: auto; }
