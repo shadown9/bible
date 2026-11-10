@@ -1174,51 +1174,75 @@ function updateMarksBadge() {
 
 /* ------------------------------- Buscar ------------------------------- */
 let searchReady = false;
+let searchT;
 function renderSearch() {
   const view = $("#view-search");
   if (searchReady) return;
   const box = el("div", "search-box");
-  const input = el("input"); input.type = "search"; input.placeholder = "Buscar palabra o frase…"; input.id = "searchInput";
+  const input = el("input"); input.type = "search"; input.placeholder = "Versículo (Josué 1:9) o una palabra…"; input.id = "searchInput";
   const btn = el("button", "iconbtn", "Buscar"); btn.style.minWidth = "auto"; btn.style.padding = ".6rem 1rem";
   box.append(input, btn);
   const results = el("div"); results.id = "searchResults";
-  results.appendChild(el("p", "muted", "Escribe al menos 3 letras. Se busca en la Reina-Valera Gómez."));
+  results.appendChild(el("p", "muted", "Escribe un versículo (ej. «Josué 1:9» o «Juan 3 16») o una palabra. Los resultados salen solos."));
   view.replaceChildren(box, results);
   const run = () => doSearch(input.value.trim());
   btn.onclick = run;
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+  input.addEventListener("input", () => { clearTimeout(searchT); searchT = setTimeout(run, 180); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const r = parseReference(input.value.trim());
+    if (r) goTo(BOOKS[r.bi].id, Math.min(Math.max(1, r.c), BOOKS[r.bi].chapters), r.v);
+    else run();
+  });
   searchReady = true;
 }
 async function doSearch(q) {
   const results = $("#searchResults");
-  if (q.length < 3) { results.replaceChildren(el("p", "muted", "Escribe al menos 3 letras.")); return; }
-  results.replaceChildren(loadingEl());
+  if (!results) return;
+  if (!q) { results.replaceChildren(el("p", "muted", "Escribe un versículo o una palabra.")); return; }
+  const frag = document.createDocumentFragment();
+  // 1) ¿es una referencia? (Josué 1:9, Juan 3 16, echos 3:19…)
+  const ref = parseReference(q);
+  if (ref) {
+    const bk = BOOKS[ref.bi]; const c = Math.min(Math.max(1, ref.c), bk.chapters);
+    const go = el("button", "short-go",
+      `<span class="short-go__i">📖</span><span class="short-go__t"><b>Ir a ${esc(bk.name)} ${c}:${ref.v}</b><small>Abrir y leer este versículo</small></span><span class="short-go__a">›</span>`);
+    go.onclick = () => goTo(bk.id, c, ref.v);
+    frag.appendChild(go);
+  }
+  results.replaceChildren(frag);
+  // 2) búsqueda por palabra (3+ letras)
+  const letters = q.replace(/[^\p{L}]/gu, "");
+  if (letters.length < 3) { if (!ref) results.appendChild(el("p", "muted", "Escribe al menos 3 letras para buscar una palabra.")); return; }
+  const tok = ++doSearch._t;
+  const loading = loadingEl(); results.appendChild(loading);
   try {
     const arr = await Data.versionFile("json/es_rvr.json");
-    const nq = norm(q);
-    const out = [];
+    if (tok !== doSearch._t) return;
+    const nq = norm(q); const out = [];
     for (let bi = 0; bi < arr.length && out.length < 300; bi++) {
       const bk = BOOKS[bi]; const chapters = arr[bi].chapters;
-      for (let ci = 0; ci < chapters.length; ci++) {
+      for (let ci = 0; ci < chapters.length && out.length < 300; ci++) {
         const vs = chapters[ci];
         for (let vi = 0; vi < vs.length; vi++) {
           if (norm(vs[vi]).includes(nq)) { out.push({ bk, c: ci + 1, v: vi + 1, t: vs[vi] }); if (out.length >= 300) break; }
         }
-        if (out.length >= 300) break;
       }
     }
-    const frag = document.createDocumentFragment();
-    frag.appendChild(el("p", "muted", out.length ? `${out.length}${out.length >= 300 ? "+" : ""} resultado(s)` : "Sin resultados."));
+    if (tok !== doSearch._t) return;
+    loading.remove();
+    if (out.length) results.appendChild(el("p", "muted", `${out.length}${out.length >= 300 ? "+" : ""} resultado(s)`));
+    else if (!ref) results.appendChild(el("p", "muted", "Sin resultados."));
     const re = new RegExp("(" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig");
     out.forEach((r) => {
       const d = el("div", "result");
       d.innerHTML = `<div class="result__ref">${esc(r.bk.name)} ${r.c}:${r.v}</div><div class="result__t">${esc(r.t).replace(re, "<mark>$1</mark>")}</div>`;
       d.onclick = () => goTo(r.bk.id, r.c, r.v);
-      frag.appendChild(d);
+      results.appendChild(d);
     });
-    results.replaceChildren(frag);
-  } catch (e) { results.replaceChildren(errorEl(e)); }
+  } catch (e) { try { loading.remove(); } catch (_) {} results.appendChild(errorEl(e)); }
 }
+doSearch._t = 0;
 
 /* ------------------------------- Ajustes ------------------------------- */
 function renderSettings() {
