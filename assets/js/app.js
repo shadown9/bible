@@ -760,6 +760,10 @@ async function renderDiscover() {
     memc.onclick = () => openMemorize();
     frag.appendChild(memc);
 
+    const namec = el("button", "disc-cta", "✡️ Tu nombre en hebreo · sus letras, su número y su significado →");
+    namec.onclick = () => openNameHebrew();
+    frag.appendChild(namec);
+
     frag.appendChild(el("div", "sec-h", "Planes de lectura"));
     plans.forEach((pl) => {
       const done = Store.planCount(pl.id), total = pl.dias.length, pct = Math.round((100 * done) / total);
@@ -1181,6 +1185,90 @@ function updateMarksBadge() {
   if (!n) { if (badge) badge.remove(); return; }
   if (!badge) { badge = el("span", "tab__badge"); tab.appendChild(badge); }
   badge.textContent = n > 99 ? "99+" : n;
+}
+
+/* -------------------- Tu nombre en hebreo (curiosidad) -------------------- */
+// char hebreo -> [nombre, valor (gematría), imagen/significado de la letra]
+const HEB = {
+  "א": ["Álef", 1, "buey · fuerza, principio"], "ב": ["Bet", 2, "casa · hogar"],
+  "ג": ["Guímel", 3, "camello · dar, avanzar"], "ד": ["Dálet", 4, "puerta · camino"],
+  "ה": ["He", 5, "ventana · aliento, revelación"], "ו": ["Vav", 6, "gancho · unión"],
+  "ז": ["Zayin", 7, "espada · sustento"], "ח": ["Jet", 8, "muro · vida, protección"],
+  "ט": ["Tet", 9, "serpiente · bien escondido"], "י": ["Yod", 10, "mano · obra, lo pequeño"],
+  "כ": ["Caf", 20, "palma · cubrir"], "ל": ["Lámed", 30, "aguijón · aprender, enseñar"],
+  "מ": ["Mem", 40, "agua · fuente"], "נ": ["Nun", 50, "pez · vida, continuidad"],
+  "ס": ["Sámej", 60, "apoyo · sostén"], "ע": ["Ayin", 70, "ojo · ver, fuente"],
+  "פ": ["Pe", 80, "boca · palabra"], "צ": ["Tsadi", 90, "anzuelo · justicia"],
+  "ק": ["Cof", 100, "nuca · santidad"], "ר": ["Resh", 200, "cabeza · principio"],
+  "ש": ["Shin", 300, "diente · fuego"], "ת": ["Tav", 400, "señal · pacto, verdad"],
+};
+const NAME_MAP = { a: "א", b: "ב", c: "כ", d: "ד", e: null, f: "פ", g: "ג", h: null, i: "י", j: "ח", k: "כ", l: "ל", m: "מ", n: "נ", o: "ו", p: "פ", q: "ק", r: "ר", s: "ס", t: "ת", u: "ו", v: "ו", w: "ו", x: "ס", y: "י", z: "ז" };
+const NAME_DIG = { ch: "ח", ll: "י", rr: "ר", qu: "ק", gu: "ג" };
+const NUM_NOTE = {
+  7: "plenitud y descanso (los 7 días de la creación).",
+  10: "plenitud (los Diez Mandamientos).",
+  12: "el pueblo de Dios (12 tribus, 12 apóstoles).",
+  14: "el número de David (Mateo ordena su genealogía en tres grupos de 14).",
+  18: "en hebreo חי (jai) significa «vida».",
+  26: "el número del Nombre de Dios, YHWH (יהוה).",
+  30: "la edad de comenzar el llamado: David reinó, los levitas servían y Jesús empezó su ministerio a los 30.",
+  40: "tiempo de prueba y preparación (el diluvio, el desierto, el ayuno de 40 días).",
+  70: "las naciones del mundo; los 70 ancianos de Israel.",
+};
+function nameToHebrew(name) {
+  const s = (name || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const out = []; let i = 0;
+  while (i < s.length) {
+    const two = s.slice(i, i + 2), one = s[i];
+    if (NAME_DIG[two]) { out.push(NAME_DIG[two]); i += 2; continue; }
+    if (one === "c" && /[ei]/.test(s[i + 1] || "")) { out.push("ס"); i += 1; continue; } // c suave = s
+    const h = NAME_MAP[one];
+    if (h) out.push(h);
+    i += 1;
+  }
+  return out;
+}
+const digitRoot = (n) => { while (n > 9) n = ("" + n).split("").reduce((a, b) => a + +b, 0); return n; };
+
+function openNameHebrew() {
+  $("#panelTitle").textContent = "Tu nombre en hebreo";
+  const body = $("#panelBody");
+  const box = el("div", "nh-box");
+  const inp = el("input"); inp.type = "text"; inp.id = "nhInput"; inp.placeholder = "Escribe un nombre (ej. Deivy)"; inp.autocomplete = "off"; inp.autocapitalize = "off";
+  box.appendChild(inp);
+  const res = el("div", "nh-res"); res.id = "nhRes";
+  body.replaceChildren(box, res);
+  $("#panel").hidden = false;
+  inp.addEventListener("input", () => renderName(inp.value));
+  renderName("");
+  setTimeout(() => inp.focus(), 60);
+}
+function renderName(name) {
+  const res = $("#nhRes"); if (!res) return;
+  const clean = (name || "").trim();
+  if (!clean) { res.replaceChildren(el("p", "muted", "Escribe un nombre y verás sus letras hebreas, el valor de cada una y el total. Es una curiosidad (gematría), para reflexionar.")); return; }
+  const chars = nameToHebrew(clean);
+  if (!chars.length) { res.replaceChildren(el("p", "muted", "Prueba con letras (sin números ni símbolos).")); return; }
+  const total = chars.reduce((s, c) => s + HEB[c][1], 0);
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el("div", "nh-word", esc(chars.join(""))));
+  frag.appendChild(el("div", "nh-translit", esc(clean) + " · se lee de derecha a izquierda"));
+  const tbl = el("div", "nh-letters");
+  chars.forEach((c) => {
+    const [nm, v, mn] = HEB[c];
+    tbl.appendChild(el("div", "nh-let",
+      `<span class="nh-let__c">${c}</span><span class="nh-let__b"><b>${esc(nm)} · ${v}</b><small>${esc(mn)}</small></span>`));
+  });
+  frag.appendChild(tbl);
+  const dr = digitRoot(total);
+  frag.appendChild(el("div", "nh-total", `Valor total: <b>${total}</b>` + (total !== dr ? ` · raíz ${dr}` : "")));
+  const notes = [];
+  if (NUM_NOTE[total]) notes.push(`El <b>${total}</b> es ${NUM_NOTE[total]}`);
+  else { const match = Object.values(HEB).find((d) => d[1] === total); if (match) notes.push(`Coincide con la letra <b>${match[0]}</b> (${match[2]}).`); }
+  if (NUM_NOTE[dr] && dr !== total) notes.push(`Su raíz <b>${dr}</b>: ${NUM_NOTE[dr]}`);
+  if (notes.length) { const n = el("div", "nh-note"); n.innerHTML = notes.join("<br>"); frag.appendChild(n); }
+  frag.appendChild(el("p", "nh-disc", "Es una transcripción aproximada por sonido, y la gematría es una tradición interpretativa judía: algo para reflexionar y disfrutar, no una definición oficial ni adivinación."));
+  res.replaceChildren(frag);
 }
 
 /* ------------------ Buscador rápido (lupa de la barra) ------------------ */
