@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel · El Mundo en 2026</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+:root{
+  --paper:#f5f2e9; --ink:#16140f; --soft:#52503f; --rojo:#d9281c; --azul:#1f5fa8;
+  --card:#fdfbf4; --line:#d8d3c2; --ok:#1d7a4d;
+  --ui:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--ui); font-size:14px; line-height:1.5}
+header{background:var(--rojo); color:#fdfbf4; padding:14px 20px; display:flex; flex-wrap:wrap; align-items:baseline; gap:12px}
+header h1{margin:0; font-size:18px; letter-spacing:.06em; text-transform:uppercase}
+header small{opacity:.9}
+main{max-width:1100px; margin:0 auto; padding:18px 16px 60px}
+section.box{background:var(--card); border:1px solid var(--line); padding:16px; margin-top:16px}
+h2{font-size:15px; text-transform:uppercase; letter-spacing:.08em; color:var(--rojo); margin:0 0 10px}
+button{font-family:var(--ui); font-size:13.5px; font-weight:600; padding:8px 16px; border:1.5px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); cursor:pointer}
+button.primary{background:var(--rojo); border-color:var(--rojo); color:#fff}
+button.blue{background:var(--azul); border-color:var(--azul); color:#fff}
+button:disabled{opacity:.45; cursor:default}
+.row{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px}
+select,input[type=text],textarea{font-family:var(--ui); font-size:13.5px; padding:7px 9px; border:1px solid var(--line); border-radius:5px; background:#fff; color:var(--ink); max-width:100%}
+textarea{width:100%; resize:vertical}
+label{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--soft); display:block; margin:10px 0 3px}
+.cols{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.colh{font-size:13px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; border-bottom:2px solid var(--ink); padding-bottom:4px}
+.hint{font-size:12.5px; color:var(--soft)}
+.warn{background:#f4ead2; border:1px solid #d9b96a; color:#6b5200; padding:9px 12px; border-radius:5px; font-size:13px; margin-top:10px}
+.okmsg{background:#e2f0e5; border:1px solid #9cc7a8; color:var(--ok); padding:9px 12px; border-radius:5px; font-size:13px; margin-top:10px}
+#prev{width:100%; height:560px; border:1px solid var(--line); background:#fff; margin-top:12px}
+code{background:var(--paper); border:1px solid var(--line); padding:1px 5px; border-radius:3px; font-size:12.5px}
+ol li{margin-top:6px}
+.chk{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; margin-right:16px}
+.chk input{width:16px; height:16px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>Panel · El Mundo en 2026</h1>
+  <small>Herramienta 100% local — nada sale de tu computadora, no usa internet ni tokens.</small>
+</header>
+<main>
+
+<section class="box" id="paso1">
+  <h2>1 · Abrir los archivos del sitio</h2>
+  <p class="hint">La web vive en la carpeta <code>mundo-2026/</code> del repositorio. Abre la carpeta (Chrome o Edge guardan directo), o carga los dos archivos a mano.</p>
+  <div class="row">
+    <button class="primary" id="btnDir">Abrir carpeta mundo-2026…</button>
+    <span class="hint">— o manual:</span>
+    <label style="margin:0">ES <input type="file" id="fileEs" accept=".html"></label>
+    <label style="margin:0">EN <input type="file" id="fileEn" accept=".html"></label>
+  </div>
+  <div id="loadMsg"></div>
+</section>
+
+<section class="box" id="editor" hidden>
+  <h2>2 · Editar</h2>
+  <div class="row">
+    <label style="margin:0">Sección
+      <select id="selSection"></select>
+    </label>
+    <label style="margin:0">Tarjeta
+      <select id="selCard"></select>
+    </label>
+    <button id="btnNew">+ Nueva tarjeta al final</button>
+    <button id="btnDel">Eliminar tarjeta</button>
+  </div>
+  <div class="warn">No reordenes ni elimines tarjetas ya publicadas: los contadores de «me gusta» de la app dependen de la posición de cada tarjeta. Añadir al final es siempre seguro.</div>
+
+  <div class="cols" style="margin-top:14px">
+    <div>
+      <div class="colh">Español</div>
+      <div id="formEs"></div>
+    </div>
+    <div>
+      <div class="colh">English</div>
+      <div id="formEn"></div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:16px">
+    <button class="primary" id="btnApply">Aplicar cambios a esta tarjeta</button>
+    <button class="blue" id="btnPreview">Vista previa (ES)</button>
+    <button class="blue" id="btnPreviewEn">Vista previa (EN)</button>
+  </div>
+  <div id="applyMsg"></div>
+  <iframe id="prev" hidden title="Vista previa"></iframe>
+</section>
+
+<section class="box" id="guardar" hidden>
+  <h2>3 · Guardar</h2>
+  <div class="row">
+    <button class="primary" id="btnSave">Guardar los dos archivos</button>
+    <span class="hint" id="saveMode"></span>
+  </div>
+  <div id="saveMsg"></div>
+</section>
+
+<section class="box">
+  <h2>4 · Publicar</h2>
+  <ol>
+    <li>Guarda con el botón de arriba (o reemplaza los archivos descargados en <code>mundo-2026/</code>).</li>
+    <li>En GitHub Desktop (o terminal): <code>git add mundo-2026 && git commit -m "Actualizar calendario" && git push</code>.</li>
+    <li>Vercel detecta el push y publica solo, en menos de un minuto.</li>
+  </ol>
+  <p class="hint">Seguridad: este panel no se publica en la web (el sitio público no lo incluye) y no guarda ni pide contraseñas. El control de acceso real es tu cuenta de GitHub con verificación en dos pasos.</p>
+</section>
+
+</main>
+
+<script>
+(function(){
+  var state = { es: null, en: null, dirHandle: null, esName: "index.html", enName: "en/index.html" };
+  var $ = function(id){ return document.getElementById(id); };
+
+  function msg(el, text, ok){
+    el.innerHTML = text ? '<div class="' + (ok ? "okmsg" : "warn") + '">' + text + '</div>' : "";
+  }
+
+  function parse(html){ return new DOMParser().parseFromString(html, "text/html"); }
+  function serialize(doc){ return "<!doctype html>\n" + doc.documentElement.outerHTML + "\n"; }
+
+  // ---------- Carga ----------
+  async function readFileInput(input){
+    return new Promise(function(res, rej){
+      var f = input.files && input.files[0];
+      if (!f) return res(null);
+      var r = new FileReader();
+      r.onload = function(){ res(r.result); };
+      r.onerror = rej;
+      r.readAsText(f);
+    });
+  }
+
+  $("btnDir").addEventListener("click", async function(){
+    if (!window.showDirectoryPicker){
+      msg($("loadMsg"), "Tu navegador no soporta abrir carpetas (usa Chrome o Edge), pero puedes cargar los dos archivos a mano con los botones de al lado.", false);
+      return;
+    }
+    try {
+      var dir = await showDirectoryPicker({ mode: "readwrite" });
+      var fEs = await (await dir.getFileHandle("index.html")).getFile();
+      var dEn = await dir.getDirectoryHandle("en");
+      var fEn = await (await dEn.getFileHandle("index.html")).getFile();
+      state.es = parse(await fEs.text());
+      state.en = parse(await fEn.text());
+      state.dirHandle = dir;
+      ready("Carpeta abierta. Los cambios se guardarán directo en los archivos.");
+    } catch(e){
+      if (e && e.name !== "AbortError") msg($("loadMsg"), "No pude abrir la carpeta: " + e.message + ". Asegúrate de elegir la carpeta mundo-2026 (la que contiene index.html y en/).", false);
+    }
+  });
+
+  async function tryManual(){
+    var es = await readFileInput($("fileEs"));
+    var en = await readFileInput($("fileEn"));
+    if (es) state.es = parse(es);
+    if (en) state.en = parse(en);
+    if (state.es && state.en){ state.dirHandle = null; ready("Archivos cargados. Al guardar se descargarán los dos archivos editados."); }
+  }
+  $("fileEs").addEventListener("change", tryManual);
+  $("fileEn").addEventListener("change", tryManual);
+
+  function ready(text){
+    msg($("loadMsg"), text, true);
+    $("editor").hidden = false;
+    $("guardar").hidden = false;
+    $("saveMode").textContent = state.dirHandle ? "Se escriben directo en la carpeta." : "Se descargan index.html y en-index.html (renómbralo a en/index.html).";
+    fillSections();
+  }
+
+  // ---------- Secciones y tarjetas ----------
+  function sections(doc){ return Array.prototype.slice.call(doc.querySelectorAll("section.mes")); }
+  function cardsOf(sec){ return Array.prototype.slice.call(sec.querySelectorAll("article.ev")); }
+
+  function fillSections(){
+    var sel = $("selSection");
+    sel.innerHTML = "";
+    sections(state.es).forEach(function(s, i){
+      var o = document.createElement("option");
+      o.value = i;
+      var h = s.querySelector("h2");
+      o.textContent = (h ? h.childNodes[0].textContent.trim() : s.id);
+      sel.appendChild(o);
+    });
+    sel.onchange = fillCards;
+    fillCards();
+  }
+
+  function fillCards(){
+    var si = +$("selSection").value || 0;
+    var secEs = sections(state.es)[si];
+    var secEn = sections(state.en)[si];
+    var sel = $("selCard");
+    sel.innerHTML = "";
+    var es = cardsOf(secEs), en = secEn ? cardsOf(secEn) : [];
+    es.forEach(function(c, i){
+      var o = document.createElement("option");
+      o.value = i;
+      var h = c.querySelector("h3");
+      o.textContent = (i + 1) + " · " + (h ? titleText(h).slice(0, 48) : "(sin título)");
+      sel.appendChild(o);
+    });
+    if (en.length !== es.length) msg($("applyMsg"), "Atención: esta sección tiene " + es.length + " tarjetas en español y " + en.length + " en inglés. Deberían ser iguales.", false);
+    else msg($("applyMsg"), "");
+    sel.onchange = fillForm;
+    fillForm();
+  }
+
+  function pair(){
+    var si = +$("selSection").value || 0, ci = +$("selCard").value || 0;
+    var secEs = sections(state.es)[si], secEn = sections(state.en)[si];
+    return {
+      secEs: secEs, secEn: secEn,
+      es: cardsOf(secEs)[ci] || null,
+      en: secEn ? (cardsOf(secEn)[ci] || null) : null
+    };
+  }
+
+  function titleText(h3){
+    var c = h3.cloneNode(true);
+    var b = c.querySelector(".pendb"); if (b) b.remove();
+    return c.textContent.trim();
+  }
+
+  // ---------- Formulario ----------
+  function escToLines(card){
+    var out = [];
+    card.querySelectorAll(".esc > li").forEach(function(li){
+      var spans = li.querySelectorAll(".lbl span");
+      if (spans.length >= 2) out.push(spans[0].textContent.trim() + " :: " + spans[1].textContent.trim());
+    });
+    return out.join("\n");
+  }
+  function prevToLines(card){
+    var out = [];
+    card.querySelectorAll(".prev li").forEach(function(li){ out.push(li.innerHTML.trim()); });
+    return out.join("\n");
+  }
+
+  function formHtml(prefix, card){
+    if (!card) return '<p class="hint">No hay tarjeta equivalente en este idioma. Usa «Nueva tarjeta» para crearla pareja.</p>';
+    var diaB = card.querySelector(".dia b"), diaS = card.querySelector(".dia span");
+    var comp = card.querySelector(".comp");
+    var esAz = card.classList.contains("az"), esPn = card.classList.contains("pn");
+    return '' +
+      '<span class="chk"><input type="checkbox" id="' + prefix + 'az"' + (esAz ? " checked" : "") + '> Tarjeta azul</span>' +
+      '<span class="chk"><input type="checkbox" id="' + prefix + 'pn"' + (esPn ? " checked" : "") + '> Pendiente (punteada)</span>' +
+      '<label>Día (número o rango)</label><input type="text" id="' + prefix + 'diab" value="' + esc(diaB ? diaB.textContent : "") + '">' +
+      '<label>Mes (etiqueta corta)</label><input type="text" id="' + prefix + 'dias" value="' + esc(diaS ? diaS.textContent : "") + '">' +
+      '<label>Categoría</label><input type="text" id="' + prefix + 'cat" value="' + esc(textOf(card, ".cat")) + '">' +
+      '<label>Título</label><input type="text" id="' + prefix + 'tit" value="' + esc(card.querySelector("h3") ? titleText(card.querySelector("h3")) : "") + '">' +
+      '<label>Descripción (HTML permitido: &lt;strong&gt; para resultados verificados)</label>' +
+      '<textarea id="' + prefix + 'desc" rows="4">' + esc(innerOf(card, "p.desc")) + '</textarea>' +
+      '<label>Escenarios (uno por línea: texto :: 55% — vacío si no aplica)</label>' +
+      '<textarea id="' + prefix + 'esc" rows="3">' + esc(escToLines(card)) + '</textarea>' +
+      '<label>Línea «Comparamos» (HTML, vacío si no aplica)</label>' +
+      '<textarea id="' + prefix + 'comp" rows="2">' + esc(comp ? comp.innerHTML.trim() : "") + '</textarea>' +
+      '<label>Prevenciones (una por línea, HTML permitido — vacío si no aplica)</label>' +
+      '<textarea id="' + prefix + 'prev" rows="3">' + esc(prevToLines(card)) + '</textarea>';
+  }
+  function esc(s){ return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;"); }
+  function textOf(card, sel){ var n = card.querySelector(sel); return n ? n.textContent.trim() : ""; }
+  function innerOf(card, sel){ var n = card.querySelector(sel); return n ? n.innerHTML.trim() : ""; }
+
+  function fillForm(){
+    var p = pair();
+    $("formEs").innerHTML = formHtml("es_", p.es);
+    $("formEn").innerHTML = formHtml("en_", p.en);
+  }
+
+  // ---------- Aplicar ----------
+  function buildEsc(lines, en){
+    var items = lines.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+    if (!items.length) return null;
+    var ul = document.createElement("ul");
+    ul.className = "esc";
+    items.forEach(function(l){
+      var parts = l.split("::");
+      var text = (parts[0] || "").trim();
+      var pct = (parts[1] || "").trim();
+      var li = document.createElement("li");
+      var num = parseInt(pct, 10);
+      li.innerHTML = '<div class="lbl"><span></span><span class="pct"></span></div>' +
+        (isNaN(num) ? "" : '<div class="bar"><i style="width:' + num + '%"></i></div>');
+      li.querySelector(".lbl span").textContent = text;
+      li.querySelector(".pct").textContent = pct;
+      return ul.appendChild(li);
+    });
+    return ul;
+  }
+  function buildPrev(lines, en){
+    var items = lines.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+    if (!items.length) return null;
+    var d = document.createElement("div");
+    d.className = "prev";
+    d.innerHTML = '<span class="lblp">' + (en ? "Preparedness" : "Prevenciones") + '</span><ul></ul>';
+    items.forEach(function(l){
+      var li = document.createElement("li");
+      li.innerHTML = l;
+      d.querySelector("ul").appendChild(li);
+    });
+    return d;
+  }
+
+  function applyTo(card, prefix, en){
+    if (!card) return;
+    var v = function(id){ var n = $(prefix + id); return n ? n.value : ""; };
+    var chk = function(id){ var n = $(prefix + id); return n ? n.checked : false; };
+    card.classList.toggle("az", chk("az"));
+    card.classList.toggle("pn", chk("pn"));
+    var diaB = card.querySelector(".dia b"), diaS = card.querySelector(".dia span");
+    if (diaB) diaB.textContent = v("diab");
+    if (diaS) diaS.textContent = v("dias");
+    var cat = card.querySelector(".cat"); if (cat) cat.textContent = v("cat");
+    var h3 = card.querySelector("h3");
+    if (h3){
+      h3.innerHTML = "";
+      h3.appendChild(document.createTextNode(v("tit")));
+      if (chk("pn")){
+        var b = document.createElement("span");
+        b.className = "pendb";
+        b.textContent = en ? "Pending" : "Pendiente";
+        h3.appendChild(b);
+      }
+    }
+    var desc = card.querySelector("p.desc"); if (desc) desc.innerHTML = v("desc");
+    // esc / prev / comp: quitar y reconstruir en orden desc -> esc -> prev -> comp
+    ["ul.esc", "div.prev", "p.comp"].forEach(function(sel){
+      var n = card.querySelector(sel); if (n) n.remove();
+    });
+    var tx = card.querySelector(".tx");
+    var anchor = tx ? (tx.querySelector(".likebtn, .sharebtn") || null) : null;
+    function insert(node){ if (!node || !tx) return; tx.insertBefore(node, anchor); }
+    insert(buildEsc(v("esc"), en));
+    insert(buildPrev(v("prev"), en));
+    var compV = v("comp").trim();
+    if (compV){
+      var pc = document.createElement("p");
+      pc.className = "comp";
+      pc.innerHTML = compV;
+      insert(pc);
+    }
+  }
+
+  $("btnApply").addEventListener("click", function(){
+    var p = pair();
+    applyTo(p.es, "es_", false);
+    applyTo(p.en, "en_", true);
+    fillCards();
+    msg($("applyMsg"), "Cambios aplicados en memoria. Revisa la vista previa y luego guarda.", true);
+  });
+
+  // ---------- Nueva / eliminar ----------
+  var TPL = function(en){
+    return '<article class="ev az"><div class="dia"><b>1</b><span>' + (en ? "Jan" : "Ene") + '</span></div>' +
+      '<div class="tx"><p class="cat">' + (en ? "Politics" : "Política") + '</p><h3>' + (en ? "New event" : "Nuevo evento") + '</h3>' +
+      '<p class="desc">' + (en ? "Description." : "Descripción.") + '</p></div></article>';
+  };
+  $("btnNew").addEventListener("click", function(){
+    var p = pair();
+    [[p.secEs, false], [p.secEn, true]].forEach(function(x){
+      if (!x[0]) return;
+      var t = document.createElement("template");
+      t.innerHTML = TPL(x[1]);
+      x[0].appendChild(t.content.firstChild);
+    });
+    fillCards();
+    $("selCard").value = String(cardsOf(p.secEs).length - 1);
+    fillForm();
+    msg($("applyMsg"), "Tarjeta nueva creada al final de la sección, en los dos idiomas. Edítala y aplica.", true);
+  });
+
+  $("btnDel").addEventListener("click", function(){
+    if (!confirm("¿Eliminar esta tarjeta en LOS DOS idiomas? Si ya estaba publicada, los «me gusta» de las tarjetas siguientes de esta sección se desplazarán.")) return;
+    var p = pair();
+    if (p.es) p.es.remove();
+    if (p.en) p.en.remove();
+    fillCards();
+  });
+
+  // ---------- Vista previa ----------
+  function preview(doc){
+    var f = $("prev");
+    f.hidden = false;
+    f.srcdoc = serialize(doc);
+    f.scrollIntoView({ behavior: "smooth" });
+  }
+  $("btnPreview").addEventListener("click", function(){ preview(state.es); });
+  $("btnPreviewEn").addEventListener("click", function(){ preview(state.en); });
+
+  // ---------- Guardar ----------
+  async function writeHandle(dir, pathParts, content){
+    var d = dir;
+    for (var i = 0; i < pathParts.length - 1; i++) d = await d.getDirectoryHandle(pathParts[i]);
+    var fh = await d.getFileHandle(pathParts[pathParts.length - 1], { create: true });
+    var w = await fh.createWritable();
+    await w.write(content);
+    await w.close();
+  }
+  function download(name, content){
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([content], { type: "text/html" }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  $("btnSave").addEventListener("click", async function(){
+    var es = serialize(state.es), en = serialize(state.en);
+    try {
+      if (state.dirHandle){
+        await writeHandle(state.dirHandle, ["index.html"], es);
+        await writeHandle(state.dirHandle, ["en", "index.html"], en);
+        msg($("saveMsg"), "Guardado directo en la carpeta. Ahora: commit y push (paso 4).", true);
+      } else {
+        download("index.html", es);
+        download("en-index.html", en);
+        msg($("saveMsg"), "Descargados. Reemplaza mundo-2026/index.html y mundo-2026/en/index.html, luego commit y push.", true);
+      }
+    } catch(e){
+      msg($("saveMsg"), "No se pudo guardar: " + e.message, false);
+    }
+  });
+
+  // gancho de pruebas
+  window.__admin = { state: state, serialize: serialize };
+})();
+</script>
+</body>
+</html>
